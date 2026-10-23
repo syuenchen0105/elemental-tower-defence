@@ -1,0 +1,15 @@
+# Compiled files
+*.exe
+*.o
+*.obj
+*.out
+*.app/
+
+# Build folders
+build/
+bin/
+obj/
+
+# Editor files
+.vscode/
+.DS_Store

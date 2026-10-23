@@ -1,0 +1,97 @@
+#ifndef MODELS_H
+#define MODELS_H
+
+#include "splashkit.h"
+#include "splashkit-arrays.h"
+
+enum enemy_type
+{
+    NORMAL,
+    FAST,
+    TANK,
+    FIRE_RESISTANT,
+    BOSS
+};
+
+enum tower_type
+{
+    BASIC,
+    FIRE,
+    RAPID,
+    HEAVY
+};
+
+enum targeting_mode
+{
+    FIRST,
+    CLOSEST,
+    STRONGEST,
+    WEAKEST
+};
+
+struct enemy
+{
+    int id;
+    enemy_type type;
+    point_2d position;
+    int path_index;
+    int health;
+    int max_health;
+    double speed;
+    int reward;
+    bool active;
+};
+
+struct tower
+{
+    int id;
+    int spot_id;
+    tower_type type;
+    targeting_mode targeting;
+    int level;
+    int cost;
+    int damage;
+    double range;
+    double attack_delay;
+    double last_attack_time;
+};
+
+struct projectile
+{
+    point_2d position;
+    int target_enemy_id;
+    int damage;
+    double speed;
+    bool active;
+};
+
+struct tower_spot
+{
+    int id;
+    point_2d position;
+    bool occupied;
+    int tower_id;
+};
+
+struct game_data
+{
+    dynamic_array<enemy> enemies;
+    dynamic_array<tower> towers;
+    dynamic_array<projectile> projectiles;
+    dynamic_array<tower_spot> tower_spots;
+    dynamic_array<point_2d> path;
+
+    int coins;
+    int lives;
+    int wave;
+
+    int next_enemy_id = 1;
+    int next_tower_id = 1;
+    int next_spot_id = 1;
+
+    bool purchase_menu_open = false;
+    bool management_menu_open = false;
+    int selected_spot_index = -1;
+};
+
+#endif
