@@ -71,7 +71,7 @@ void draw_projectiles(const dynamic_array<projectile> &projectiles)
     }
 }
 
-void select_tower(game_data &game, tower_type type)
+static void select_tower(game_data &game, tower_type type)
 {
     if (place_tower(game, game.selected_spot_index, type))
     {
@@ -80,14 +80,14 @@ void select_tower(game_data &game, tower_type type)
     }
 }
 
-void select_targeting_mode(game_data &game, targeting_mode mode)
+static void select_targeting_mode(game_data &game, targeting_mode mode)
 {
     change_tower_targeting(game, mode);
     game.management_menu_open = false;
     game.selected_spot_index = -1;
 }
 
-void select_upgrade(game_data &game)
+static void select_upgrade(game_data &game)
 {
     if (upgrade_tower(game))
     {
@@ -96,7 +96,7 @@ void select_upgrade(game_data &game)
     }
 }
 
-void draw_purchase_option(
+static void draw_purchase_option(
     game_data &game,
     tower_type type,
     const string &name,

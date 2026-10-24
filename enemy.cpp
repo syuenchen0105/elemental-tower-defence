@@ -20,7 +20,7 @@ void spawn_enemy(game_data &game)
     add(game.enemies, new_enemy);
 }
 
-void move_enemy(
+static void move_enemy(
     enemy &current_enemy,
     const dynamic_array<point_2d> &path
 )

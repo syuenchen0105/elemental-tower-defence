@@ -1,6 +1,6 @@
 #include "config.h"
 
-tower_stats read_tower_stats(
+static tower_stats read_tower_stats(
     json tower_data,
     const string &type_name,
     tower_type type
@@ -19,7 +19,7 @@ tower_stats read_tower_stats(
     return stats;
 }
 
-tower_upgrade read_tower_upgrade(
+static tower_upgrade read_tower_upgrade(
     json upgrade_data,
     const string &type_name,
     tower_type type,

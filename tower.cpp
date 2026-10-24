@@ -2,7 +2,7 @@
 #include "tower.h"
 #include "projectile.h"
 
-tower create_tower(
+static tower create_tower(
     const tower_stats &stats,
     int id,
     int spot_id
@@ -94,7 +94,7 @@ void handle_tower_click(game_data &game)
     }
 }
 
-bool enemy_in_range(
+static bool enemy_in_range(
     const tower &current_tower,
     const tower_spot &spot,
     const enemy &current_enemy
@@ -106,7 +106,7 @@ bool enemy_in_range(
 }
 
 // Return true if the checking enemy has higher targeting priority
-bool is_better_target(
+static bool is_better_target(
     const tower &current_tower,
     const tower_spot &spot,
     const enemy &checking_enemy,
@@ -183,7 +183,7 @@ bool is_better_target(
     return false;
 }
 
-int find_target(
+static int find_target(
     const tower &current_tower,
     const tower_spot &spot,
     const dynamic_array<enemy> &enemies,

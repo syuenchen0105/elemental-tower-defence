@@ -29,6 +29,15 @@ enum targeting_mode
     WEAKEST
 };
 
+enum effect_type
+{
+    BURNING,
+    WET,
+    CHARGED,
+    CRACKED,
+    EFFECT_COUNT
+};
+
 struct tower_stats
 {
     tower_type type;
@@ -54,6 +63,12 @@ struct game_config
     dynamic_array<tower_upgrade> tower_upgrades;
 };
 
+struct enemy_effects
+{
+    fixed_array<double, EFFECT_COUNT> end_times{0.0};
+    double next_burn_tick_time = 0.0;
+};
+
 struct enemy
 {
     int id;
@@ -65,6 +80,7 @@ struct enemy
     double speed;
     int reward;
     bool active;
+    enemy_effects effects;
 };
 
 struct tower
@@ -85,6 +101,7 @@ struct projectile
 {
     point_2d position;
     int target_enemy_id;
+    tower_type type;
     int damage;
     double speed;
     bool active;

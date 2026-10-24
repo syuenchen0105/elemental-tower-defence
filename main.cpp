@@ -75,7 +75,12 @@ int main()
             update_tower_attacks(game, current_time_seconds);
 
             // Update projectile movement and damage
-            update_projectiles(game.projectiles, game.enemies, game.coins);
+            update_projectiles(
+                game.projectiles,
+                game.enemies,
+                game.coins,
+                current_time_seconds
+            );
 
             // Remove inactive enemies and projectiles
             remove_inactive_enemies(game.enemies);

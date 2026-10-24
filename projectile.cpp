@@ -1,3 +1,4 @@
+#include "effects.h"
 #include "projectile.h"
 
 void fire_projectile(
@@ -20,7 +21,7 @@ void fire_projectile(
     add(projectiles, new_projectile);
 }
 
-int find_enemy_index(
+static int find_enemy_index(
     const dynamic_array<enemy> &enemies,
     int enemy_id
 )
@@ -37,7 +38,7 @@ int find_enemy_index(
     return -1;
 }
 
-bool move_projectile(
+static bool move_projectile(
     projectile &current_projectile,
     point_2d target_position
 )
@@ -65,10 +66,70 @@ bool move_projectile(
     return false;
 }
 
+static void apply_projectile_effect(
+    const projectile &current_projectile,
+    enemy &current_enemy,
+    double current_time
+)
+{
+    switch (current_projectile.type)
+    {
+        case FIRE:
+            if (!is_effect_active(current_enemy, BURNING, current_time))
+            {
+                current_enemy.effects.next_burn_tick_time = current_time + 0.5;
+            }
+
+            apply_effect(current_enemy, BURNING, current_time, 2.5);
+            break;
+
+        
+        case WATER:
+            apply_effect(current_enemy, WET, current_time, 3.0);
+            break;
+        
+        case ELECTRIC:
+            apply_effect(current_enemy, CHARGED, current_time, 2.5);
+            break;
+
+        case EARTH:
+            apply_effect(current_enemy, CRACKED, current_time, 2.5);
+            break;
+    }
+}
+
+static void handle_projectile_hit(
+    projectile &current_projectile,
+    enemy &current_enemy,
+    int &coins,
+    double current_time
+)
+{
+    // Apply damage and deactivate the projectile
+    current_enemy.health -= current_projectile.damage;
+    current_projectile.active = false;
+
+    if (current_enemy.health <= 0)
+    {
+        current_enemy.active = false;
+        coins += current_enemy.reward;
+    }
+
+    if (current_enemy.active)
+    {
+        apply_projectile_effect(
+            current_projectile,
+            current_enemy,
+            current_time
+        );
+    }
+}
+
 void update_projectiles(
     dynamic_array<projectile> &projectiles,
     dynamic_array<enemy> &enemies,
-    int &coins
+    int &coins,
+    double current_time
 )
 {
     for (int i = 0; i < length(projectiles); i++)
@@ -90,15 +151,12 @@ void update_projectiles(
 
         if (move_projectile(projectiles[i], enemies[target_index].position))
         {
-            // Apply damage and deactivate the projectile
-            enemies[target_index].health -= projectiles[i].damage;
-            projectiles[i].active = false;
-
-            if (enemies[target_index].health <= 0)
-            {
-                enemies[target_index].active = false;
-                coins += enemies[target_index].reward;
-            }
+            handle_projectile_hit(
+                projectiles[i],
+                enemies[target_index],
+                coins,
+                current_time
+            );
         }
     }
 }

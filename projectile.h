@@ -10,15 +10,11 @@ void fire_projectile(
     int target_enemy_id
 );
 
-int find_enemy_index(
-    const dynamic_array<enemy> &enemies,
-    int enemy_id
-);
-
 void update_projectiles(
     dynamic_array<projectile> &projectiles,
     dynamic_array<enemy> &enemies,
-    int &coins
+    int &coins,
+    double current_time
 );
 
 void remove_inactive_projectiles(dynamic_array<projectile> &projectiles);
