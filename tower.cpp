@@ -121,6 +121,84 @@ bool enemy_in_range(
     return current_enemy.active && point_in_circle(current_enemy.position, range_circle);
 }
 
+// Return true if the checking enemy has higher targeting priority
+bool is_better_target(
+    const tower &current_tower,
+    const tower_spot &spot,
+    const enemy &checking_enemy,
+    const enemy &selected_enemy,
+    const dynamic_array<point_2d> &path
+)
+{
+    switch (current_tower.targeting)
+    {
+        case FIRST:
+        {
+            int checking_path_index = checking_enemy.path_index;
+            int selected_path_index = selected_enemy.path_index;
+
+            if (checking_path_index > selected_path_index)
+            {
+                return true;
+            }
+            else if (checking_path_index == selected_path_index)
+            {
+                // Compare distances to the next waypoint
+                int next_index = checking_path_index + 1;
+
+                if (next_index >= length(path)) return false;
+
+                double checking_distance = point_point_distance(
+                    checking_enemy.position,
+                    path[next_index]
+                );
+
+                double selected_distance = point_point_distance(
+                    selected_enemy.position,
+                    path[next_index]
+                );
+
+                if (checking_distance < selected_distance) return true;
+            }
+
+            break;
+        }
+
+        case CLOSEST:
+        {
+            double checking_distance = point_point_distance(
+                checking_enemy.position,
+                spot.position
+            );
+
+            double selected_distance = point_point_distance(
+                selected_enemy.position,
+                spot.position
+            );
+
+            if (checking_distance < selected_distance) return true;
+
+            break;
+        }
+
+        case STRONGEST:
+        {
+            if (checking_enemy.health > selected_enemy.health) return true;
+
+            break;
+        }
+
+        case WEAKEST:
+        {
+            if (checking_enemy.health < selected_enemy.health) return true;
+
+            break;
+        }
+    }
+
+    return false;
+}
+
 int find_target(
     const tower &current_tower,
     const tower_spot &spot,
@@ -130,129 +208,20 @@ int find_target(
 {
     int selected_index = -1;
 
-    switch (current_tower.targeting)
+    // Find the best enemy within the tower's range
+    for (int i = 0; i < length(enemies); i++)
     {
-        case FIRST:
+        if (!enemy_in_range(current_tower, spot, enemies[i])) continue;
+
+        if (selected_index == -1)
         {
-            // Find the enemy furthest along the path within range
-            for (int i = 0; i < length(enemies); i++)
-            {
-                if (!enemy_in_range(current_tower, spot, enemies[i])) continue;
-
-                if (selected_index == -1)
-                {
-                    selected_index = i;
-                    continue;
-                }
-
-                int checking_path_index = enemies[i].path_index;
-                int selected_path_index = enemies[selected_index].path_index;
-
-                if (checking_path_index > selected_path_index)
-                {
-                    selected_index = i;
-                }
-                else if (checking_path_index == selected_path_index)
-                {
-                    // Compare distances to the next waypoint
-                    int next_index = checking_path_index + 1;
-
-                    if (next_index >= length(path)) continue;
-
-                    double checking_distance = point_point_distance(
-                        enemies[i].position,
-                        path[next_index]
-                    );
-
-                    double selected_distance = point_point_distance(
-                        enemies[selected_index].position,
-                        path[next_index]
-                    );
-
-                    if (checking_distance < selected_distance)
-                    {
-                        selected_index = i;
-                    }
-                }
-            }
-
-            break;
+            selected_index = i;
+            continue;
         }
 
-        case CLOSEST:
+        if (is_better_target(current_tower, spot, enemies[i], enemies[selected_index], path))
         {
-            // Find the closest enemy within the tower's range
-            for (int i = 0; i < length(enemies); i++)
-            {
-                if (!enemy_in_range(current_tower, spot, enemies[i])) continue;
-
-                if (selected_index == -1)
-                {
-                    selected_index = i;
-                    continue;
-                }
-
-                double checking_distance = point_point_distance(
-                    enemies[i].position,
-                    spot.position
-                );
-
-                double selected_distance = point_point_distance(
-                    enemies[selected_index].position,
-                    spot.position
-                );
-
-                if (checking_distance < selected_distance)
-                {
-                    selected_index = i;
-                }
-            }
-
-            break;
-        }
-
-        case STRONGEST:
-        {
-            // Find the enemy with the highest health within range
-            for (int i = 0; i < length(enemies); i++)
-            {
-                if (!enemy_in_range(current_tower, spot, enemies[i])) continue;
-
-                if (selected_index == -1)
-                {
-                    selected_index = i;
-                    continue;
-                }
-
-                if (enemies[i].health > enemies[selected_index].health)
-                {
-                    selected_index = i;
-                }
-            }
-
-            break;
-        }
-
-        case WEAKEST:
-        {
-            // Find the enemy with the lowest health within range
-            for (int i = 0; i < length(enemies); i++)
-            {
-                if (!enemy_in_range(current_tower, spot, enemies[i])) continue;
-
-                if (selected_index == -1)
-                {
-                    selected_index = i;
-                    continue;
-                }
-
-                if (enemies[i].health < enemies[selected_index].health)
-                {
-                    selected_index = i;
-                }
-            }
-
-            break;
+            selected_index = i;
         }
     }
 
@@ -322,48 +291,64 @@ int get_upgrade_cost(const tower &current_tower)
 {
     if (current_tower.level >= 5) return 0;
 
-    switch(current_tower.type)
+    switch (current_tower.type)
     {
     case BASIC:
-        switch(current_tower.level)
+        switch (current_tower.level)
         {
-        case 1: return 20;
-        case 2: return 30;
-        case 3: return 45;
-        case 4: return 60;
+            case 1:
+                return 20;
+            case 2:
+                return 30;
+            case 3:
+                return 45;
+            case 4:
+                return 60;
         }
 
         break;
 
     case FIRE:
-        switch(current_tower.level)
+        switch (current_tower.level)
         {
-        case 1: return 30;
-        case 2: return 45;
-        case 3: return 65;
-        case 4: return 90;
+            case 1:
+                return 30;
+            case 2:
+                return 45;
+            case 3:
+                return 65;
+            case 4:
+                return 90;
         }
 
         break;
 
     case RAPID:
-        switch(current_tower.level)
+        switch (current_tower.level)
         {
-        case 1: return 35;
-        case 2: return 50;
-        case 3: return 70;
-        case 4: return 95;
+            case 1:
+                return 35;
+            case 2:
+                return 50;
+            case 3:
+                return 70;
+            case 4:
+                return 95;
         }
 
         break;
 
     case HEAVY:
-        switch(current_tower.level)
+        switch (current_tower.level)
         {
-        case 1: return 45;
-        case 2: return 65;
-        case 3: return 90;
-        case 4: return 120;
+            case 1:
+                return 45;
+            case 2:
+                return 65;
+            case 3:
+                return 90;
+            case 4:
+                return 120;
         }
 
         break;
@@ -396,96 +381,96 @@ bool upgrade_tower(game_data &game)
             double range_increase = 0;
             double attack_delay_reduction = 0;
 
-            switch(current_tower.type)
+            switch (current_tower.type)
             {
             case BASIC:
-                switch(current_tower.level)
+                switch (current_tower.level)
                 {
-                case 1:
-                    damage_increase = 5;
-                    break;
+                    case 1:
+                        damage_increase = 5;
+                        break;
 
-                case 2:
-                    range_increase = 15;
-                    break;
+                    case 2:
+                        range_increase = 15;
+                        break;
 
-                case 3:
-                    damage_increase = 10;
-                    break;
+                    case 3:
+                        damage_increase = 10;
+                        break;
 
-                case 4:
-                    damage_increase = 10;
-                    range_increase = 15;
-                    break;
+                    case 4:
+                        damage_increase = 10;
+                        range_increase = 15;
+                        break;
                 }
 
                 break;
 
             case FIRE:
-                switch(current_tower.level)
+                switch (current_tower.level)
                 {
-                case 1:
-                    damage_increase = 7;
-                    break;
+                    case 1:
+                        damage_increase = 7;
+                        break;
 
-                case 2:
-                    range_increase = 15;
-                    break;
+                    case 2:
+                        range_increase = 15;
+                        break;
 
-                case 3:
-                    damage_increase = 10;
-                    break;
+                    case 3:
+                        damage_increase = 10;
+                        break;
 
-                case 4:
-                    damage_increase = 15;
-                    range_increase = 15;
-                    break;
+                    case 4:
+                        damage_increase = 15;
+                        range_increase = 15;
+                        break;
                 }
 
                 break;
 
             case RAPID:
-                switch(current_tower.level)
+                switch (current_tower.level)
                 {
-                case 1:
-                    attack_delay_reduction = 0.05;
-                    break;
+                    case 1:
+                        attack_delay_reduction = 0.05;
+                        break;
 
-                case 2:
-                    damage_increase = 3;
-                    break;
+                    case 2:
+                        damage_increase = 3;
+                        break;
 
-                case 3:
-                    attack_delay_reduction = 0.05;
-                    break;
+                    case 3:
+                        attack_delay_reduction = 0.05;
+                        break;
 
-                case 4:
-                    damage_increase = 4;
-                    range_increase = 10;
-                    break;
+                    case 4:
+                        damage_increase = 4;
+                        range_increase = 10;
+                        break;
                 }
 
                 break;
 
             case HEAVY:
-                switch(current_tower.level)
+                switch (current_tower.level)
                 {
-                case 1:
-                    damage_increase = 15;
-                    break;
+                    case 1:
+                        damage_increase = 15;
+                        break;
 
-                case 2:
-                    range_increase = 15;
-                    break;
+                    case 2:
+                        range_increase = 15;
+                        break;
 
-                case 3:
-                    damage_increase = 20;
-                    break;
+                    case 3:
+                        damage_increase = 20;
+                        break;
 
-                case 4:
-                    damage_increase = 25;
-                    range_increase = 15;
-                    break;
+                    case 4:
+                        damage_increase = 25;
+                        range_increase = 15;
+                        break;
                 }
 
                 break;
