@@ -20,6 +20,37 @@ void spawn_enemy(game_data &game)
     add(game.enemies, new_enemy);
 }
 
+void move_enemy(
+    enemy &current_enemy,
+    const dynamic_array<point_2d> &path
+)
+{
+    int next_index = current_enemy.path_index + 1;
+
+    if (next_index >= length(path)) return;
+
+    point_2d next_point = path[next_index];
+
+    double distance = point_point_distance(
+        current_enemy.position,
+        next_point
+    );
+
+    // Move to the next waypoint when close enough
+    if (distance <= current_enemy.speed)
+    {
+        current_enemy.position = next_point;
+        current_enemy.path_index++;
+        return;
+    }
+
+    double dx = next_point.x - current_enemy.position.x;
+    double dy = next_point.y - current_enemy.position.y;
+
+    current_enemy.position.x += (dx / distance) * current_enemy.speed;
+    current_enemy.position.y += (dy / distance) * current_enemy.speed;
+}
+
 void update_enemies(
     dynamic_array<enemy> &enemies,
     const dynamic_array<point_2d> &path,
@@ -31,62 +62,7 @@ void update_enemies(
         if (lives <= 0) break;
         if (!enemies[i].active) continue;
 
-        int current = enemies[i].path_index;
-
-        // Check if the enemy has reached the end of the path
-        if (current + 1 >= length(path))
-        {
-            enemies[i].active = false;
-            continue;
-        }
-
-        point_2d current_point = path[current];
-        point_2d next_point = path[current + 1];
-
-        // Move right
-        if (current_point.x < next_point.x)
-        {
-            enemies[i].position.x += enemies[i].speed;
-
-            if (enemies[i].position.x >= next_point.x)
-            {
-                enemies[i].position.x = next_point.x;
-                enemies[i].path_index++;
-            }
-        }
-        // Move left
-        else if (current_point.x > next_point.x)
-        {
-            enemies[i].position.x -= enemies[i].speed;
-
-            if (enemies[i].position.x <= next_point.x)
-            {
-                enemies[i].position.x = next_point.x;
-                enemies[i].path_index++;
-            }
-        }
-        // Move up
-        else if (current_point.y > next_point.y)
-        {
-            enemies[i].position.y -= enemies[i].speed;
-
-            if (enemies[i].position.y <= next_point.y)
-            {
-                enemies[i].position.y = next_point.y;
-                enemies[i].path_index++;
-            }
-        }
-        // Move down
-        else if (current_point.y < next_point.y)
-        {
-            enemies[i].position.y += enemies[i].speed;
-
-            if (enemies[i].position.y >= next_point.y)
-            {
-                enemies[i].position.y = next_point.y;
-                enemies[i].path_index++;
-            }
-        }
+        move_enemy(enemies[i], path);
 
         // Deduct one life when the enemy reaches the base
         if (enemies[i].path_index == length(path) - 1)
