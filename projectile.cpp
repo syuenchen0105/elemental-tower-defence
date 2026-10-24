@@ -12,6 +12,7 @@ void fire_projectile(
 
     new_projectile.position = spot.position;
     new_projectile.target_enemy_id = target_enemy_id;
+    new_projectile.type = current_tower.type;
     new_projectile.damage = current_tower.damage;
     new_projectile.speed = 5.0;
     new_projectile.active = true;
@@ -36,6 +37,34 @@ int find_enemy_index(
     return -1;
 }
 
+bool move_projectile(
+    projectile &current_projectile,
+    point_2d target_position
+)
+{
+    // Calculate the distance and direction to the target
+    double distance = point_point_distance(
+        current_projectile.position,
+        target_position
+    );
+
+    double dx = target_position.x - current_projectile.position.x;
+    double dy = target_position.y - current_projectile.position.y;
+
+    // Move the projectile directly to its target when close enough
+    if (distance <= current_projectile.speed)
+    {
+        current_projectile.position = target_position;
+        return true;
+    }
+
+    // Move towards the target using a unit vector
+    current_projectile.position.x += (dx / distance) * current_projectile.speed;
+    current_projectile.position.y += (dy / distance) * current_projectile.speed;
+
+    return false;
+}
+
 void update_projectiles(
     dynamic_array<projectile> &projectiles,
     dynamic_array<enemy> &enemies,
@@ -47,7 +76,10 @@ void update_projectiles(
         if (!projectiles[i].active) continue;
 
         // Find the projectile's target enemy
-        int target_index = find_enemy_index(enemies, projectiles[i].target_enemy_id);
+        int target_index = find_enemy_index(
+            enemies,
+            projectiles[i].target_enemy_id
+        );
 
         // Deactivate the projectile if its target is missing or inactive
         if (target_index == -1 || !enemies[target_index].active)
@@ -56,20 +88,8 @@ void update_projectiles(
             continue;
         }
 
-        // Calculate the distance and direction to the target
-        double distance = point_point_distance(
-            projectiles[i].position,
-            enemies[target_index].position
-        );
-
-        double dx = enemies[target_index].position.x - projectiles[i].position.x;
-        double dy = enemies[target_index].position.y - projectiles[i].position.y;
-
-        if (distance <= projectiles[i].speed)
+        if (move_projectile(projectiles[i], enemies[target_index].position))
         {
-            // Move the projectile directly to its target
-            projectiles[i].position = enemies[target_index].position;
-
             // Apply damage and deactivate the projectile
             enemies[target_index].health -= projectiles[i].damage;
             projectiles[i].active = false;
@@ -79,12 +99,6 @@ void update_projectiles(
                 enemies[target_index].active = false;
                 coins += enemies[target_index].reward;
             }
-        }
-        else
-        {
-            // Move towards the target using a unit vector and projectile speed
-            projectiles[i].position.x += (dx / distance) * projectiles[i].speed;
-            projectiles[i].position.y += (dy / distance) * projectiles[i].speed;
         }
     }
 }
