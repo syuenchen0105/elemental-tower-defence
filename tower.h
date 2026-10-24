@@ -28,7 +28,7 @@ void update_tower_attacks(game_data &game, double current_time);
 
 void change_tower_targeting(game_data &game, targeting_mode mode);
 
-int get_upgrade_cost(const tower &current_tower);
+int get_upgrade_cost(const game_data &game, const tower &current_tower);
 
 bool upgrade_tower(game_data &game);
 

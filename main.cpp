@@ -1,4 +1,6 @@
+#include "config.h"
 #include "enemy.h"
+#include "game.h"
 #include "map.h"
 #include "models.h"
 #include "projectile.h"
@@ -8,11 +10,11 @@
 int main()
 {
     // Initialise game data
-    game_data game = {};
+    game_data game = create_game();
 
-    game.coins = 100;
-    game.lives = 10;
-    game.wave = 1;
+    // Load game configuration
+    load_tower_stats(game.config.tower_definitions);
+    load_tower_upgrades(game.config.tower_upgrades);
 
     setup_path(game.path);
     setup_tower_spots(game);
@@ -57,7 +59,8 @@ int main()
             unsigned int current_time = timer_ticks(spawn_timer);
 
             // Spawn one enemy every second
-            if (spawned_count < enemies_per_wave && current_time - last_spawn_time >= 1000)
+            if (spawned_count < enemies_per_wave &&
+                current_time - last_spawn_time >= 1000)
             {
                 spawn_enemy(game);
                 spawned_count++;
@@ -79,7 +82,9 @@ int main()
             remove_inactive_projectiles(game.projectiles);
 
             // Start the next wave when all enemies are gone
-            if (game.lives > 0 && spawned_count == enemies_per_wave && length(game.enemies) == 0)
+            if (game.lives > 0 &&
+                spawned_count == enemies_per_wave &&
+                length(game.enemies) == 0)
             {
                 game.wave++;
                 spawned_count = 0;

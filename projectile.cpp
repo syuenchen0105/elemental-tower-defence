@@ -8,7 +8,7 @@ void fire_projectile(
 )
 {
     // Create a projectile at the tower's position
-    projectile new_projectile = {};
+    projectile new_projectile{};
 
     new_projectile.position = spot.position;
     new_projectile.target_enemy_id = target_enemy_id;

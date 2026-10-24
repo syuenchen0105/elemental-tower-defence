@@ -1,3 +1,4 @@
+#include "config.h"
 #include "render.h"
 #include "tower.h"
 
@@ -24,25 +25,25 @@ void draw_towers(
         {
             if (towers[i].spot_id == spots[j].id)
             {
-                color tower_color = COLOR_GREEN;
+                color tower_color = COLOR_WHITE;
 
                 switch (towers[i].type)
                 {
-                case BASIC:
-                    tower_color = COLOR_GREEN;
-                    break;
+                    case FIRE:
+                        tower_color = COLOR_ORANGE;
+                        break;
 
-                case FIRE:
-                    tower_color = COLOR_ORANGE;
-                    break;
+                    case WATER:
+                        tower_color = COLOR_BLUE;
+                        break;
 
-                case RAPID:
-                    tower_color = COLOR_BLUE;
-                    break;
+                    case ELECTRIC:
+                        tower_color = COLOR_YELLOW;
+                        break;
 
-                case HEAVY:
-                    tower_color = COLOR_PURPLE;
-                    break;
+                    case EARTH:
+                        tower_color = COLOR_BROWN;
+                        break;
                 }
 
                 fill_circle(tower_color, spots[j].position, 15);
@@ -95,6 +96,22 @@ void select_upgrade(game_data &game)
     }
 }
 
+void draw_purchase_option(
+    game_data &game,
+    tower_type type,
+    const string &name,
+    rectangle button_area
+)
+{
+    const tower_stats *stats = find_tower_stats(game.config, type);
+    if (stats == nullptr) return;
+
+    if (button(name + " - " + to_string(stats->cost), button_area))
+    {
+        select_tower(game, type);
+    }
+}
+
 void draw_purchase_menu(game_data &game)
 {
     point_2d spot_position = game.tower_spots[game.selected_spot_index].position;
@@ -128,30 +145,30 @@ void draw_purchase_menu(game_data &game)
 
     draw_text("Choose Tower", COLOR_BLACK, menu_x + 15, menu_y + 15);
 
-    // Draw tower selection buttons
     double button_width = menu_width - 30;
     double button_height = 30;
     double button_x = menu_x + (menu_width - button_width) / 2 - 5;
 
-    if (button("BASIC - 30", rectangle_from(button_x, menu_y + 30, button_width, button_height)))
-    {
-        select_tower(game, BASIC);
-    }
+    // Draw elemental tower purchase options
+    draw_purchase_option(
+        game, FIRE, "FIRE",
+        rectangle_from(button_x, menu_y + 30, button_width, button_height)
+    );
 
-    if (button("FIRE - 50", rectangle_from(button_x, menu_y + 70, button_width, button_height)))
-    {
-        select_tower(game, FIRE);
-    }
+    draw_purchase_option(
+        game, WATER, "WATER",
+        rectangle_from(button_x, menu_y + 70, button_width, button_height)
+    );
 
-    if (button("RAPID - 60", rectangle_from(button_x, menu_y + 110, button_width, button_height)))
-    {
-        select_tower(game, RAPID);
-    }
+    draw_purchase_option(
+        game, ELECTRIC, "ELECTRIC",
+        rectangle_from(button_x, menu_y + 110, button_width, button_height)
+    );
 
-    if (button("HEAVY - 80", rectangle_from(button_x, menu_y + 150, button_width, button_height)))
-    {
-        select_tower(game, HEAVY);
-    }
+    draw_purchase_option(
+        game, EARTH, "EARTH",
+        rectangle_from(button_x, menu_y + 150, button_width, button_height)
+    );
 
     if (button("CANCEL", rectangle_from(button_x, menu_y + 190, button_width, button_height)))
     {
@@ -171,7 +188,7 @@ void draw_management_menu(game_data &game)
     {
         if (game.towers[i].id == selected_tower_id)
         {
-            upgrade_cost = get_upgrade_cost(game.towers[i]);
+            upgrade_cost = get_upgrade_cost(game, game.towers[i]);
             tower_level = game.towers[i].level;
             break;
         }

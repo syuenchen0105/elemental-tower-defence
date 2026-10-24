@@ -1,48 +1,27 @@
+#include "config.h"
 #include "tower.h"
 #include "projectile.h"
 
-tower create_tower(tower_type type, int id, int spot_id)
+tower create_tower(
+    const tower_stats &stats,
+    int id,
+    int spot_id
+)
 {
-    tower new_tower = {};
+    tower new_tower{};
 
     new_tower.id = id;
     new_tower.spot_id = spot_id;
-    new_tower.type = type;
+    new_tower.type = stats.type;
+
     new_tower.targeting = FIRST;
     new_tower.level = 1;
     new_tower.last_attack_time = 0.0;
 
-    // Set tower attributes based on its type
-    switch (type)
-    {
-        case BASIC:
-            new_tower.cost = 30;
-            new_tower.damage = 10;
-            new_tower.range = 120;
-            new_tower.attack_delay = 1.0;
-            break;
-
-        case FIRE:
-            new_tower.cost = 50;
-            new_tower.damage = 18;
-            new_tower.range = 110;
-            new_tower.attack_delay = 1.2;
-            break;
-
-        case RAPID:
-            new_tower.cost = 60;
-            new_tower.damage = 8;
-            new_tower.range = 100;
-            new_tower.attack_delay = 0.4;
-            break;
-
-        case HEAVY:
-            new_tower.cost = 80;
-            new_tower.damage = 45;
-            new_tower.range = 150;
-            new_tower.attack_delay = 1.8;
-            break;
-    }
+    new_tower.cost = stats.cost;
+    new_tower.damage = stats.damage;
+    new_tower.range = stats.range;
+    new_tower.attack_delay = stats.attack_delay;
 
     return new_tower;
 }
@@ -50,7 +29,8 @@ tower create_tower(tower_type type, int id, int spot_id)
 bool place_tower(game_data &game, int spot_index, tower_type type)
 {
     // Validate the tower spot index
-    if (spot_index < 0 || spot_index >= length(game.tower_spots))
+    if (spot_index < 0 ||
+        spot_index >= length(game.tower_spots))
     {
         return false;
     }
@@ -58,8 +38,12 @@ bool place_tower(game_data &game, int spot_index, tower_type type)
     // Check if the spot is occupied
     if (game.tower_spots[spot_index].occupied) return false;
 
+    // Find the tower's configuration
+    const tower_stats *stats = find_tower_stats(game.config, type);
+    if (stats == nullptr) return false;
+
     tower new_tower = create_tower(
-        type,
+        *stats,
         game.next_tower_id,
         game.tower_spots[spot_index].id
     );
@@ -273,7 +257,8 @@ void update_tower_attacks(game_data &game, double current_time)
 void change_tower_targeting(game_data &game, targeting_mode mode)
 {
     // Validate the selected tower spot index
-    if (game.selected_spot_index < 0 || game.selected_spot_index >= length(game.tower_spots)) return;
+    if (game.selected_spot_index < 0 ||
+        game.selected_spot_index >= length(game.tower_spots)) return;
 
     int selected_tower_id = game.tower_spots[game.selected_spot_index].tower_id;
 
@@ -287,80 +272,25 @@ void change_tower_targeting(game_data &game, targeting_mode mode)
     }
 }
 
-int get_upgrade_cost(const tower &current_tower)
+int get_upgrade_cost(const game_data &game, const tower &current_tower)
 {
     if (current_tower.level >= 5) return 0;
 
-    switch (current_tower.type)
-    {
-    case BASIC:
-        switch (current_tower.level)
-        {
-            case 1:
-                return 20;
-            case 2:
-                return 30;
-            case 3:
-                return 45;
-            case 4:
-                return 60;
-        }
+    const tower_upgrade *upgrade = find_tower_upgrade(
+        game.config,
+        current_tower.type,
+        current_tower.level + 1
+    );
+    if (upgrade == nullptr) return 0;
 
-        break;
-
-    case FIRE:
-        switch (current_tower.level)
-        {
-            case 1:
-                return 30;
-            case 2:
-                return 45;
-            case 3:
-                return 65;
-            case 4:
-                return 90;
-        }
-
-        break;
-
-    case RAPID:
-        switch (current_tower.level)
-        {
-            case 1:
-                return 35;
-            case 2:
-                return 50;
-            case 3:
-                return 70;
-            case 4:
-                return 95;
-        }
-
-        break;
-
-    case HEAVY:
-        switch (current_tower.level)
-        {
-            case 1:
-                return 45;
-            case 2:
-                return 65;
-            case 3:
-                return 90;
-            case 4:
-                return 120;
-        }
-
-        break;
-    }
-
-    return 0;
+    return upgrade->cost;
 }
 
 bool upgrade_tower(game_data &game)
 {
     // Validate the selected tower spot
-    if (game.selected_spot_index < 0 || game.selected_spot_index >= length(game.tower_spots)) return false;
+    if (game.selected_spot_index < 0 ||
+        game.selected_spot_index >= length(game.tower_spots)) return false;
 
     if (!game.tower_spots[game.selected_spot_index].occupied) return false;
 
@@ -376,114 +306,20 @@ bool upgrade_tower(game_data &game)
             // Check if the tower is already at maximum level
             if (current_tower.level >= 5) return false;
 
-            int upgrade_cost = get_upgrade_cost(current_tower);
-            int damage_increase = 0;
-            double range_increase = 0;
-            double attack_delay_reduction = 0;
+            const tower_upgrade *upgrade = find_tower_upgrade(
+                game.config,
+                current_tower.type,
+                current_tower.level + 1
+            );
+            if (upgrade == nullptr) return false;
 
-            switch (current_tower.type)
-            {
-            case BASIC:
-                switch (current_tower.level)
-                {
-                    case 1:
-                        damage_increase = 5;
-                        break;
+            if (game.coins < upgrade->cost) return false;
 
-                    case 2:
-                        range_increase = 15;
-                        break;
+            game.coins -= upgrade->cost;
 
-                    case 3:
-                        damage_increase = 10;
-                        break;
-
-                    case 4:
-                        damage_increase = 10;
-                        range_increase = 15;
-                        break;
-                }
-
-                break;
-
-            case FIRE:
-                switch (current_tower.level)
-                {
-                    case 1:
-                        damage_increase = 7;
-                        break;
-
-                    case 2:
-                        range_increase = 15;
-                        break;
-
-                    case 3:
-                        damage_increase = 10;
-                        break;
-
-                    case 4:
-                        damage_increase = 15;
-                        range_increase = 15;
-                        break;
-                }
-
-                break;
-
-            case RAPID:
-                switch (current_tower.level)
-                {
-                    case 1:
-                        attack_delay_reduction = 0.05;
-                        break;
-
-                    case 2:
-                        damage_increase = 3;
-                        break;
-
-                    case 3:
-                        attack_delay_reduction = 0.05;
-                        break;
-
-                    case 4:
-                        damage_increase = 4;
-                        range_increase = 10;
-                        break;
-                }
-
-                break;
-
-            case HEAVY:
-                switch (current_tower.level)
-                {
-                    case 1:
-                        damage_increase = 15;
-                        break;
-
-                    case 2:
-                        range_increase = 15;
-                        break;
-
-                    case 3:
-                        damage_increase = 20;
-                        break;
-
-                    case 4:
-                        damage_increase = 25;
-                        range_increase = 15;
-                        break;
-                }
-
-                break;
-            }
-
-            if (upgrade_cost == 0) return false;
-            if (game.coins < upgrade_cost) return false;
-
-            game.coins -= upgrade_cost;
-
-            current_tower.damage += damage_increase;
-            current_tower.range += range_increase;
-            current_tower.attack_delay -= attack_delay_reduction;
+            current_tower.damage += upgrade->damage_increase;
+            current_tower.range += upgrade->range_increase;
+            current_tower.attack_delay -= upgrade->attack_delay_reduction;
 
             current_tower.level++;
 

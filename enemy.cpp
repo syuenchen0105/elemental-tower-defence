@@ -2,7 +2,7 @@
 
 void spawn_enemy(game_data &game)
 {
-    enemy new_enemy = {};
+    enemy new_enemy{};
 
     new_enemy.id = game.next_enemy_id;
     game.next_enemy_id++;

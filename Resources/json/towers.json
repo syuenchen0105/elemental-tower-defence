@@ -1,0 +1,26 @@
+{
+    "FIRE": {
+        "cost": 55,
+        "damage": 18,
+        "range": 125,
+        "attack_delay": 1.0
+    },
+    "WATER": {
+        "cost": 40,
+        "damage": 10,
+        "range": 135,
+        "attack_delay": 0.9
+    },
+    "ELECTRIC": {
+        "cost": 60,
+        "damage": 13,
+        "range": 120,
+        "attack_delay": 0.65
+    },
+    "EARTH": {
+        "cost": 80,
+        "damage": 40,
+        "range": 150,
+        "attack_delay": 1.8
+    }
+}

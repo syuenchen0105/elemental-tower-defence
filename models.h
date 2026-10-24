@@ -15,10 +15,10 @@ enum enemy_type
 
 enum tower_type
 {
-    BASIC,
     FIRE,
-    RAPID,
-    HEAVY
+    WATER,
+    ELECTRIC,
+    EARTH
 };
 
 enum targeting_mode
@@ -27,6 +27,31 @@ enum targeting_mode
     CLOSEST,
     STRONGEST,
     WEAKEST
+};
+
+struct tower_stats
+{
+    tower_type type;
+    int cost;
+    int damage;
+    double range;
+    double attack_delay;
+};
+
+struct tower_upgrade
+{
+    tower_type type;
+    int level;
+    int cost;
+    int damage_increase;
+    double range_increase;
+    double attack_delay_reduction;
+};
+
+struct game_config
+{
+    dynamic_array<tower_stats> tower_definitions;
+    dynamic_array<tower_upgrade> tower_upgrades;
 };
 
 struct enemy
@@ -75,6 +100,8 @@ struct tower_spot
 
 struct game_data
 {
+    game_config config;
+
     dynamic_array<enemy> enemies;
     dynamic_array<tower> towers;
     dynamic_array<projectile> projectiles;

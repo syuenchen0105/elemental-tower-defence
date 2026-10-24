@@ -13,7 +13,7 @@ void setup_path(dynamic_array<point_2d> &path)
 
 tower_spot create_tower_spot(point_2d position, int id)
 {
-    tower_spot new_spot = {};
+    tower_spot new_spot{};
 
     new_spot.id = id;
     new_spot.position = position;
@@ -25,7 +25,7 @@ tower_spot create_tower_spot(point_2d position, int id)
 
 void setup_tower_spots(game_data &game)
 {
-    dynamic_array<point_2d> positions = {};
+    dynamic_array<point_2d> positions{};
 
     add(positions, point_at(130, 220));
     add(positions, point_at(160, 400));
