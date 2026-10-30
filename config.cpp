@@ -3,8 +3,7 @@
 static tower_stats read_tower_stats(
     json tower_data,
     const string &type_name,
-    tower_type type
-)
+    tower_type type)
 {
     tower_stats stats{};
 
@@ -19,29 +18,8 @@ static tower_stats read_tower_stats(
     return stats;
 }
 
-static tower_upgrade read_tower_upgrade(
-    json upgrade_data,
-    const string &type_name,
-    tower_type type,
-    int level
-)
-{
-    tower_upgrade upgrade{};
-
-    json type_data = json_read_object(upgrade_data, type_name);
-    json level_data = json_read_object(type_data, to_string(level));
-
-    upgrade.type = type;
-    upgrade.level = level;
-    upgrade.cost = json_read_number_as_int(level_data, "cost");
-    upgrade.damage_increase = json_read_number_as_int(level_data, "damage_increase");
-    upgrade.range_increase = json_read_number_as_double(level_data, "range_increase");
-    upgrade.attack_delay_reduction = json_read_number_as_double(level_data, "attack_delay_reduction");
-
-    return upgrade;
-}
-
-void load_tower_stats(dynamic_array<tower_stats> &tower_definitions)
+void load_tower_stats(
+    dynamic_array<tower_stats> &tower_definitions)
 {
     json tower_data = json_from_file("towers.json");
 
@@ -53,9 +31,50 @@ void load_tower_stats(dynamic_array<tower_stats> &tower_definitions)
     free_json(tower_data);
 }
 
+const tower_stats *find_tower_stats(
+    const game_config &config,
+    tower_type type)
+{
+    for (int i = 0; i < length(config.tower_definitions); i++)
+    {
+        if (config.tower_definitions[i].type == type)
+        {
+            return &config.tower_definitions[i];
+        }
+    }
+
+    return nullptr;
+}
+
+static tower_upgrade read_tower_upgrade(
+    json upgrade_data,
+    const string &type_name,
+    tower_type type,
+    int level)
+{
+    tower_upgrade upgrade{};
+
+    json type_data = json_read_object(upgrade_data, type_name);
+    json level_data = json_read_object(type_data, to_string(level));
+
+    upgrade.type = type;
+    upgrade.level = level;
+    upgrade.cost = json_read_number_as_int(level_data, "cost");
+    upgrade.damage_increase = json_read_number_as_int(
+        level_data,
+        "damage_increase");
+    upgrade.range_increase = json_read_number_as_double(
+        level_data,
+        "range_increase");
+    upgrade.attack_delay_reduction = json_read_number_as_double(
+        level_data,
+        "attack_delay_reduction");
+
+    return upgrade;
+}
+
 void load_tower_upgrades(
-    dynamic_array<tower_upgrade> &tower_upgrades
-)
+    dynamic_array<tower_upgrade> &tower_upgrades)
 {
     json upgrade_data = json_from_file("upgrades.json");
 
@@ -70,34 +89,64 @@ void load_tower_upgrades(
     free_json(upgrade_data);
 }
 
-const tower_stats *find_tower_stats(
+const tower_upgrade *find_tower_upgrade(
     const game_config &config,
-    tower_type type
-)
+    tower_type type,
+    int level)
 {
-    for (int i = 0; i < length(config.tower_definitions); i++)
+    for (int i = 0; i < length(config.tower_upgrades); i++)
     {
-        if (config.tower_definitions[i].type == type)
+        if (
+            config.tower_upgrades[i].type == type &&
+            config.tower_upgrades[i].level == level)
         {
-            return &config.tower_definitions[i];
+            return &config.tower_upgrades[i];
         }
     }
 
     return nullptr;
 }
 
-const tower_upgrade *find_tower_upgrade(
-    const game_config &config,
-    tower_type type,
-    int level
-)
+static enemy_stats read_enemy_stats(
+    json enemy_data,
+    const string &type_name,
+    enemy_type type)
 {
-    for (int i = 0; i < length(config.tower_upgrades); i++)
+    enemy_stats stats{};
+
+    json data = json_read_object(enemy_data, type_name);
+
+    stats.type = type;
+    stats.health = json_read_number_as_int(data, "health");
+    stats.speed = json_read_number_as_double(data, "speed");
+    stats.reward = json_read_number_as_int(data, "reward");
+
+    return stats;
+}
+
+void load_enemy_stats(
+    dynamic_array<enemy_stats> &enemy_definitions)
+{
+    json enemy_data = json_from_file("enemies.json");
+
+    add(enemy_definitions, read_enemy_stats(enemy_data, "NORMAL", NORMAL));
+    add(enemy_definitions, read_enemy_stats(enemy_data, "FAST", FAST));
+    add(enemy_definitions, read_enemy_stats(enemy_data, "TANK", TANK));
+    add(enemy_definitions, read_enemy_stats(enemy_data, "SWARM", SWARM));
+    add(enemy_definitions, read_enemy_stats(enemy_data, "BOSS", BOSS));
+
+    free_json(enemy_data);
+}
+
+const enemy_stats *find_enemy_stats(
+    const game_config &config,
+    enemy_type type)
+{
+    for (int i = 0; i < length(config.enemy_definitions); i++)
     {
-        if (config.tower_upgrades[i].type == type &&
-            config.tower_upgrades[i].level == level)
+        if (config.enemy_definitions[i].type == type)
         {
-            return &config.tower_upgrades[i];
+            return &config.enemy_definitions[i];
         }
     }
 

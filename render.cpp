@@ -29,21 +29,21 @@ void draw_towers(
 
                 switch (towers[i].type)
                 {
-                    case FIRE:
-                        tower_color = COLOR_ORANGE;
-                        break;
+                case FIRE:
+                    tower_color = COLOR_ORANGE;
+                    break;
 
-                    case WATER:
-                        tower_color = COLOR_BLUE;
-                        break;
+                case WATER:
+                    tower_color = COLOR_BLUE;
+                    break;
 
-                    case ELECTRIC:
-                        tower_color = COLOR_YELLOW;
-                        break;
+                case ELECTRIC:
+                    tower_color = COLOR_YELLOW;
+                    break;
 
-                    case EARTH:
-                        tower_color = COLOR_BROWN;
-                        break;
+                case EARTH:
+                    tower_color = COLOR_BROWN;
+                    break;
                 }
 
                 fill_circle(tower_color, spots[j].position, 15);
@@ -96,15 +96,25 @@ static void select_upgrade(game_data &game)
     }
 }
 
+static void select_sell(game_data &game)
+{
+    if (sell_tower(game))
+    {
+        game.management_menu_open = false;
+        game.selected_spot_index = -1;
+    }
+}
+
 static void draw_purchase_option(
     game_data &game,
     tower_type type,
     const string &name,
-    rectangle button_area
-)
+    rectangle button_area)
 {
     const tower_stats *stats = find_tower_stats(game.config, type);
-    if (stats == nullptr) return;
+
+    if (stats == nullptr)
+        return;
 
     if (button(name + " - " + to_string(stats->cost), button_area))
     {
@@ -114,7 +124,8 @@ static void draw_purchase_option(
 
 void draw_purchase_menu(game_data &game)
 {
-    point_2d spot_position = game.tower_spots[game.selected_spot_index].position;
+    point_2d spot_position =
+        game.tower_spots[game.selected_spot_index].position;
 
     double menu_width = 180;
     double menu_height = 240;
@@ -140,10 +151,25 @@ void draw_purchase_menu(game_data &game)
     }
 
     // Draw menu background
-    fill_rectangle(COLOR_WHITE, menu_x, menu_y, menu_width, menu_height);
-    draw_rectangle(COLOR_BLACK, menu_x, menu_y, menu_width, menu_height);
+    fill_rectangle(
+        COLOR_WHITE,
+        menu_x,
+        menu_y,
+        menu_width,
+        menu_height);
 
-    draw_text("Choose Tower", COLOR_BLACK, menu_x + 15, menu_y + 15);
+    draw_rectangle(
+        COLOR_BLACK,
+        menu_x,
+        menu_y,
+        menu_width,
+        menu_height);
+
+    draw_text(
+        "Choose Tower",
+        COLOR_BLACK,
+        menu_x + 15,
+        menu_y + 15);
 
     double button_width = menu_width - 30;
     double button_height = 30;
@@ -151,26 +177,52 @@ void draw_purchase_menu(game_data &game)
 
     // Draw elemental tower purchase options
     draw_purchase_option(
-        game, FIRE, "FIRE",
-        rectangle_from(button_x, menu_y + 30, button_width, button_height)
-    );
+        game,
+        FIRE,
+        "FIRE",
+        rectangle_from(
+            button_x,
+            menu_y + 30,
+            button_width,
+            button_height));
 
     draw_purchase_option(
-        game, WATER, "WATER",
-        rectangle_from(button_x, menu_y + 70, button_width, button_height)
-    );
+        game,
+        WATER,
+        "WATER",
+        rectangle_from(
+            button_x,
+            menu_y + 70,
+            button_width,
+            button_height));
 
     draw_purchase_option(
-        game, ELECTRIC, "ELECTRIC",
-        rectangle_from(button_x, menu_y + 110, button_width, button_height)
-    );
+        game,
+        ELECTRIC,
+        "ELECTRIC",
+        rectangle_from(
+            button_x,
+            menu_y + 110,
+            button_width,
+            button_height));
 
     draw_purchase_option(
-        game, EARTH, "EARTH",
-        rectangle_from(button_x, menu_y + 150, button_width, button_height)
-    );
+        game,
+        EARTH,
+        "EARTH",
+        rectangle_from(
+            button_x,
+            menu_y + 150,
+            button_width,
+            button_height));
 
-    if (button("CANCEL", rectangle_from(button_x, menu_y + 190, button_width, button_height)))
+    if (button(
+            "CANCEL",
+            rectangle_from(
+                button_x,
+                menu_y + 190,
+                button_width,
+                button_height)))
     {
         game.purchase_menu_open = false;
         game.selected_spot_index = -1;
@@ -179,9 +231,11 @@ void draw_purchase_menu(game_data &game)
 
 void draw_management_menu(game_data &game)
 {
-    int selected_tower_id = game.tower_spots[game.selected_spot_index].tower_id;
+    int selected_tower_id =
+        game.tower_spots[game.selected_spot_index].tower_id;
 
     int upgrade_cost = 0;
+    int sell_refund = 0;
     int tower_level = 0;
 
     for (int i = 0; i < length(game.towers); i++)
@@ -189,17 +243,20 @@ void draw_management_menu(game_data &game)
         if (game.towers[i].id == selected_tower_id)
         {
             upgrade_cost = get_upgrade_cost(game, game.towers[i]);
+            sell_refund = get_sell_refund(game.towers[i]);
             tower_level = game.towers[i].level;
             break;
         }
     }
 
-    if (tower_level == 0) return;
+    if (tower_level == 0)
+        return;
 
-    point_2d spot_position = game.tower_spots[game.selected_spot_index].position;
+    point_2d spot_position =
+        game.tower_spots[game.selected_spot_index].position;
 
     double menu_width = 180;
-    double menu_height = 280;
+    double menu_height = 320;
     double gap = 30;
 
     double menu_x = spot_position.x + gap;
@@ -222,36 +279,76 @@ void draw_management_menu(game_data &game)
     }
 
     // Draw menu background
-    fill_rectangle(COLOR_WHITE, menu_x, menu_y, menu_width, menu_height);
-    draw_rectangle(COLOR_BLACK, menu_x, menu_y, menu_width, menu_height);
+    fill_rectangle(
+        COLOR_WHITE,
+        menu_x,
+        menu_y,
+        menu_width,
+        menu_height);
 
-    draw_text("Tower - Lv " + to_string(tower_level), COLOR_BLACK, menu_x + 15, menu_y + 15);
+    draw_rectangle(
+        COLOR_BLACK,
+        menu_x,
+        menu_y,
+        menu_width,
+        menu_height);
 
-    // Draw targeting mode buttons
+    draw_text(
+        "Tower - Lv " + to_string(tower_level),
+        COLOR_BLACK,
+        menu_x + 15,
+        menu_y + 15);
+
     double button_width = menu_width - 30;
     double button_height = 30;
     double button_x = menu_x + (menu_width - button_width) / 2 - 5;
 
-    if (button("FIRST", rectangle_from(button_x, menu_y + 30, button_width, button_height)))
+    // Draw targeting mode buttons
+    if (button(
+            "FIRST",
+            rectangle_from(
+                button_x,
+                menu_y + 30,
+                button_width,
+                button_height)))
     {
         select_targeting_mode(game, FIRST);
     }
 
-    if (button("CLOSEST", rectangle_from(button_x, menu_y + 70, button_width, button_height)))
+    if (button(
+            "CLOSEST",
+            rectangle_from(
+                button_x,
+                menu_y + 70,
+                button_width,
+                button_height)))
     {
         select_targeting_mode(game, CLOSEST);
     }
 
-    if (button("STRONGEST", rectangle_from(button_x, menu_y + 110, button_width, button_height)))
+    if (button(
+            "STRONGEST",
+            rectangle_from(
+                button_x,
+                menu_y + 110,
+                button_width,
+                button_height)))
     {
         select_targeting_mode(game, STRONGEST);
     }
 
-    if (button("WEAKEST", rectangle_from(button_x, menu_y + 150, button_width, button_height)))
+    if (button(
+            "WEAKEST",
+            rectangle_from(
+                button_x,
+                menu_y + 150,
+                button_width,
+                button_height)))
     {
         select_targeting_mode(game, WEAKEST);
     }
 
+    // Draw upgrade button
     string upgrade_text = "MAX LEVEL";
 
     if (upgrade_cost > 0)
@@ -259,7 +356,13 @@ void draw_management_menu(game_data &game)
         upgrade_text = "UPGRADE - " + to_string(upgrade_cost);
     }
 
-    if (button(upgrade_text, rectangle_from(button_x, menu_y + 190, button_width, button_height)))
+    if (button(
+            upgrade_text,
+            rectangle_from(
+                button_x,
+                menu_y + 190,
+                button_width,
+                button_height)))
     {
         if (upgrade_cost > 0)
         {
@@ -267,7 +370,27 @@ void draw_management_menu(game_data &game)
         }
     }
 
-    if (button("CANCEL", rectangle_from(button_x, menu_y + 230, button_width, button_height)))
+    // Draw sell button
+    string sell_text = "SELL - " + to_string(sell_refund);
+
+    if (button(
+            sell_text,
+            rectangle_from(
+                button_x,
+                menu_y + 230,
+                button_width,
+                button_height)))
+    {
+        select_sell(game);
+    }
+
+    if (button(
+            "CANCEL",
+            rectangle_from(
+                button_x,
+                menu_y + 270,
+                button_width,
+                button_height)))
     {
         game.management_menu_open = false;
         game.selected_spot_index = -1;

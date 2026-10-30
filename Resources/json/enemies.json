@@ -1,0 +1,27 @@
+{
+    "NORMAL": {
+        "health": 100,
+        "speed": 2.0,
+        "reward": 10
+    },
+    "FAST": {
+        "health": 65,
+        "speed": 3.2,
+        "reward": 12
+    },
+    "TANK": {
+        "health": 220,
+        "speed": 1.2,
+        "reward": 22
+    },
+    "SWARM": {
+        "health": 40,
+        "speed": 2.7,
+        "reward": 6
+    },
+    "BOSS": {
+        "health": 600,
+        "speed": 1.0,
+        "reward": 80
+    }
+}
