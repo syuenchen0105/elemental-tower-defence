@@ -100,7 +100,7 @@ struct reaction_stats
     double cooldown = 0.0;
 };
 
-// Configuration shared by all six elemental reactions
+// Shared settings for all elemental reactions
 struct reaction_config
 {
     fixed_array<reaction_stats, REACTION_COUNT> definitions{};
@@ -108,6 +108,19 @@ struct reaction_config
     int max_aoe_targets = 3;
     double stun_cooldown = 3.0;
     double boss_control_multiplier = 0.5;
+};
+
+// Configuration for wave timing, spawning and rewards
+struct wave_config
+{
+    int first_wave_enemies = 3;
+    int enemies_added_per_wave = 1;
+
+    unsigned int regular_spawn_interval_ms = 1000;
+    unsigned int swarm_spawn_interval_ms = 350;
+
+    double preparation_seconds = 10.0;
+    int completion_reward = 25;
 };
 
 // Stores all configuration data used by the game
@@ -118,9 +131,10 @@ struct game_config
     dynamic_array<enemy_stats> enemy_definitions;
 
     reaction_config reactions;
+    wave_config waves;
 };
 
-// Tracks the duration of elemental effects and movement restrictions
+// Tracks elemental status durations and movement restrictions
 struct enemy_effects
 {
     fixed_array<double, EFFECT_COUNT> end_times{0.0};
@@ -201,12 +215,12 @@ struct game_data
     dynamic_array<tower_spot> tower_spots;
     dynamic_array<point_2d> path;
 
-    // Player resources and wave progression
+    // Player resources and current wave
     int coins;
     int lives;
     int wave;
 
-    // Unique identifiers for enemies, towers and spots
+    // Unique identifiers for new entities
     int next_enemy_id = 1;
     int next_tower_id = 1;
     int next_spot_id = 1;

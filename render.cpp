@@ -2,6 +2,7 @@
 #include "enemy.h"
 #include "render.h"
 #include "tower.h"
+#include "wave.h"
 
 // Return the display colour for each enemy type
 static color get_enemy_color(enemy_type type)
@@ -503,7 +504,8 @@ static string get_preview_text(
 // Display the upcoming enemy composition and allow the player to start early
 static void draw_preparation_panel(game_data &game)
 {
-    int enemies_per_wave = game.wave + 2;
+    // Use the configured enemy count so the preview matches the actual wave
+    int enemies_per_wave = get_enemies_per_wave(game);
 
     fixed_array<int, 5> counts{0};
 

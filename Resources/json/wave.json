@@ -1,0 +1,8 @@
+{
+    "first_wave_enemies": 3,
+    "enemies_added_per_wave": 1,
+    "regular_spawn_interval_ms": 1000,
+    "swarm_spawn_interval_ms": 350,
+    "preparation_seconds": 10.0,
+    "completion_reward": 25
+}
