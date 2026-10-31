@@ -3,24 +3,23 @@
 
 #include "models.h"
 
+// Create a projectile that travels toward the specified enemy
 void fire_projectile(
     dynamic_array<projectile> &projectiles,
     const tower &current_tower,
     const tower_spot &spot,
-    int target_enemy_id
-);
+    int target_enemy_id);
 
-int find_enemy_index(
-    const dynamic_array<enemy> &enemies,
-    int enemy_id
-);
-
+// Move projectiles and process damage, resistances and elemental reactions
 void update_projectiles(
     dynamic_array<projectile> &projectiles,
     dynamic_array<enemy> &enemies,
-    int &coins
-);
+    int &coins,
+    double current_time,
+    const reaction_config &settings);
 
-void remove_inactive_projectiles(dynamic_array<projectile> &projectiles);
+// Remove projectiles that have hit or lost their targets
+void remove_inactive_projectiles(
+    dynamic_array<projectile> &projectiles);
 
 #endif

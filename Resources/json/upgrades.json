@@ -1,0 +1,106 @@
+{
+    "FIRE": {
+        "2": {
+            "cost": 35,
+            "damage_increase": 5,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        },
+        "3": {
+            "cost": 50,
+            "damage_increase": 0,
+            "range_increase": 15,
+            "attack_delay_reduction": 0
+        },
+        "4": {
+            "cost": 70,
+            "damage_increase": 6,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        },
+        "5": {
+            "cost": 95,
+            "damage_increase": 7,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        }
+    },
+    "WATER": {
+        "2": {
+            "cost": 25,
+            "damage_increase": 4,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        },
+        "3": {
+            "cost": 40,
+            "damage_increase": 0,
+            "range_increase": 15,
+            "attack_delay_reduction": 0
+        },
+        "4": {
+            "cost": 55,
+            "damage_increase": 4,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        },
+        "5": {
+            "cost": 75,
+            "damage_increase": 4,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        }
+    },
+    "ELECTRIC": {
+        "2": {
+            "cost": 40,
+            "damage_increase": 4,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        },
+        "3": {
+            "cost": 55,
+            "damage_increase": 0,
+            "range_increase": 15,
+            "attack_delay_reduction": 0
+        },
+        "4": {
+            "cost": 75,
+            "damage_increase": 0,
+            "range_increase": 0,
+            "attack_delay_reduction": 0.10
+        },
+        "5": {
+            "cost": 100,
+            "damage_increase": 4,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        }
+    },
+    "EARTH": {
+        "2": {
+            "cost": 50,
+            "damage_increase": 12,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        },
+        "3": {
+            "cost": 70,
+            "damage_increase": 0,
+            "range_increase": 15,
+            "attack_delay_reduction": 0
+        },
+        "4": {
+            "cost": 95,
+            "damage_increase": 16,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        },
+        "5": {
+            "cost": 125,
+            "damage_increase": 14,
+            "range_increase": 0,
+            "attack_delay_reduction": 0
+        }
+    }
+}

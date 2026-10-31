@@ -1,30 +1,32 @@
 #include "projectile.h"
+#include "effects.h"
 
+// Create a projectile that travels toward a target enemy
 void fire_projectile(
     dynamic_array<projectile> &projectiles,
     const tower &current_tower,
     const tower_spot &spot,
-    int target_enemy_id
-)
+    int target_enemy_id)
 {
-    // Create a projectile at the tower's position
-    projectile new_projectile = {};
+    const double PROJECTILE_SPEED = 5.0;
+
+    projectile new_projectile{};
 
     new_projectile.position = spot.position;
     new_projectile.target_enemy_id = target_enemy_id;
+    new_projectile.type = current_tower.type;
     new_projectile.damage = current_tower.damage;
-    new_projectile.speed = 5.0;
+    new_projectile.speed = PROJECTILE_SPEED;
     new_projectile.active = true;
 
     add(projectiles, new_projectile);
 }
 
-int find_enemy_index(
+// Find an enemy's array index using its unique ID
+static int find_enemy_index(
     const dynamic_array<enemy> &enemies,
-    int enemy_id
-)
+    int enemy_id)
 {
-    // Find the enemy with the matching ID
     for (int i = 0; i < length(enemies); i++)
     {
         if (enemies[i].id == enemy_id)
@@ -36,72 +38,226 @@ int find_enemy_index(
     return -1;
 }
 
+// Move a projectile toward its target and report whether it has arrived
+static bool move_projectile(
+    projectile &current_projectile,
+    point_2d target_position)
+{
+    double distance = point_point_distance(
+        current_projectile.position,
+        target_position);
+
+    double dx = target_position.x - current_projectile.position.x;
+    double dy = target_position.y - current_projectile.position.y;
+
+    // Move directly to the target when close enough
+    if (distance <= current_projectile.speed)
+    {
+        current_projectile.position = target_position;
+        return true;
+    }
+
+    // Move toward the target using a unit direction vector
+    current_projectile.position.x +=
+        (dx / distance) * current_projectile.speed;
+
+    current_projectile.position.y +=
+        (dy / distance) * current_projectile.speed;
+
+    return false;
+}
+
+// Calculate projectile damage after applying enemy resistances
+static int calculate_projectile_damage(
+    const projectile &current_projectile,
+    const enemy &current_enemy)
+{
+    const int TANK_EARTH_DAMAGE_PERCENT = 70;
+    const int BOSS_DAMAGE_PERCENT = 80;
+    const int PERCENT_DIVISOR = 100;
+    const int MINIMUM_DAMAGE = 1;
+
+    int damage = current_projectile.damage;
+
+    // TANK enemies take 70% damage from EARTH projectiles
+    if (
+        current_enemy.type == TANK &&
+        current_projectile.type == EARTH)
+    {
+        damage =
+            damage * TANK_EARTH_DAMAGE_PERCENT / PERCENT_DIVISOR;
+    }
+    // BOSS enemies take 80% direct projectile damage
+    else if (current_enemy.type == BOSS)
+    {
+        damage =
+            damage * BOSS_DAMAGE_PERCENT / PERCENT_DIVISOR;
+    }
+
+    // Ensure every successful projectile hit deals at least 1 damage
+    if (damage < MINIMUM_DAMAGE)
+    {
+        damage = MINIMUM_DAMAGE;
+    }
+
+    return damage;
+}
+
+// Apply the elemental status associated with a projectile's tower type
+static void apply_projectile_effect(
+    const projectile &current_projectile,
+    enemy &current_enemy,
+    double current_time)
+{
+    // Elemental effect durations and burning tick timing
+    const double BURNING_DURATION = 2.5;
+    const double BURNING_TICK_INTERVAL = 0.5;
+    const double WET_DURATION = 3.0;
+    const double CHARGED_DURATION = 2.5;
+    const double CRACKED_DURATION = 2.5;
+
+    switch (current_projectile.type)
+    {
+    case FIRE:
+        // Start burning ticks only if the enemy is not already burning
+        if (!is_effect_active(current_enemy, BURNING, current_time))
+        {
+            current_enemy.effects.next_burn_tick_time =
+                current_time + BURNING_TICK_INTERVAL;
+        }
+
+        apply_effect(
+            current_enemy,
+            BURNING,
+            current_time,
+            BURNING_DURATION);
+
+        break;
+
+    case WATER:
+        // Apply WET status and its separate movement slowdown
+        apply_effect(
+            current_enemy,
+            WET,
+            current_time,
+            WET_DURATION);
+
+        apply_wet_slow(
+            current_enemy,
+            current_time,
+            WET_DURATION);
+
+        break;
+
+    case ELECTRIC:
+        apply_effect(
+            current_enemy,
+            CHARGED,
+            current_time,
+            CHARGED_DURATION);
+
+        break;
+
+    case EARTH:
+        apply_effect(
+            current_enemy,
+            CRACKED,
+            current_time,
+            CRACKED_DURATION);
+
+        break;
+    }
+}
+
+// Apply projectile damage and its elemental status if the enemy survives
+static void handle_projectile_hit(
+    projectile &current_projectile,
+    enemy &current_enemy,
+    int &coins,
+    double current_time)
+{
+    // Deactivate the projectile after reaching its target
+    current_projectile.active = false;
+
+    int damage = calculate_projectile_damage(
+        current_projectile,
+        current_enemy);
+
+    damage_enemy(
+        current_enemy,
+        damage,
+        coins);
+
+    if (current_enemy.active)
+    {
+        apply_projectile_effect(
+            current_projectile,
+            current_enemy,
+            current_time);
+    }
+}
+
+// Update projectiles and check reactions using the loaded configuration
 void update_projectiles(
     dynamic_array<projectile> &projectiles,
     dynamic_array<enemy> &enemies,
-    int &coins
-)
+    int &coins,
+    double current_time,
+    const reaction_config &settings)
 {
     for (int i = 0; i < length(projectiles); i++)
     {
-        if (!projectiles[i].active) continue;
+        if (!projectiles[i].active)
+        {
+            continue;
+        }
 
         // Find the projectile's target enemy
-        int target_index = find_enemy_index(enemies, projectiles[i].target_enemy_id);
+        int target_index = find_enemy_index(
+            enemies,
+            projectiles[i].target_enemy_id);
 
-        // Deactivate the projectile if its target is missing or inactive
+        // Deactivate projectiles whose targets are missing or inactive
         if (target_index == -1 || !enemies[target_index].active)
         {
             projectiles[i].active = false;
             continue;
         }
 
-        // Calculate the distance and direction to the target
-        double distance = point_point_distance(
-            projectiles[i].position,
-            enemies[target_index].position
-        );
-
-        double dx = enemies[target_index].position.x - projectiles[i].position.x;
-        double dy = enemies[target_index].position.y - projectiles[i].position.y;
-
-        if (distance <= projectiles[i].speed)
+        // Move the projectile and process its hit when it arrives
+        if (move_projectile(
+                projectiles[i],
+                enemies[target_index].position))
         {
-            // Move the projectile directly to its target
-            projectiles[i].position = enemies[target_index].position;
+            handle_projectile_hit(
+                projectiles[i],
+                enemies[target_index],
+                coins,
+                current_time);
 
-            // Apply damage and deactivate the projectile
-            enemies[target_index].health -= projectiles[i].damage;
-            projectiles[i].active = false;
-
-            if (enemies[target_index].health <= 0)
+            // Check for reactions after a projectile applies its effect
+            if (enemies[target_index].active)
             {
-                enemies[target_index].active = false;
-                coins += enemies[target_index].reward;
+                try_trigger_reaction(
+                    enemies,
+                    target_index,
+                    current_time,
+                    coins,
+                    settings);
             }
-        }
-        else
-        {
-            // Move towards the target using a unit vector and projectile speed
-            projectiles[i].position.x += (dx / distance) * projectiles[i].speed;
-            projectiles[i].position.y += (dy / distance) * projectiles[i].speed;
         }
     }
 }
 
-void remove_inactive_projectiles(dynamic_array<projectile> &projectiles)
+// Remove inactive projectiles by iterating backward through the array
+void remove_inactive_projectiles(
+    dynamic_array<projectile> &projectiles)
 {
-    int i = 0;
-
-    while (i < length(projectiles))
+    for (int i = length(projectiles) - 1; i >= 0; i--)
     {
         if (!projectiles[i].active)
         {
             remove(projectiles, i);
-        }
-        else
-        {
-            i++;
         }
     }
 }

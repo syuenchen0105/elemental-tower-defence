@@ -1,30 +1,57 @@
+#include "splashkit.h"
+#include "config.h"
+#include "effects.h"
 #include "enemy.h"
+#include "game.h"
 #include "map.h"
-#include "models.h"
 #include "projectile.h"
 #include "render.h"
 #include "tower.h"
+#include "wave.h"
 
+// Initialise the game and run the main gameplay loop
 int main()
 {
-    // Initialise game data
-    game_data game = {};
+    game_data game = create_game();
 
-    game.coins = 100;
-    game.lives = 10;
-    game.wave = 1;
+    // Load tower, upgrade and enemy configurations
+    load_tower_stats(game.config.tower_definitions);
+    load_tower_upgrades(game.config.tower_upgrades);
+    load_enemy_stats(game.config.enemy_definitions);
 
-    setup_path(game.path);
-    setup_tower_spots(game);
+    // Load the configurable elemental reaction statistics
+    if (!load_reaction_config(game.config.reactions))
+    {
+        write_line("Unable to start the game: reaction loading failed.");
+        return 1;
+    }
+
+    // Load wave timing, enemy counts and rewards from wave.json
+    if (!load_wave_config(game.config.waves))
+    {
+        write_line("Unable to start the game: wave loading failed.");
+        return 1;
+    }
+
+    // Load the enemy path and tower spots from map.json
+    if (!load_map(game))
+    {
+        write_line("Unable to start the game: map loading failed.");
+        return 1;
+    }
+
+    // Set the initial preparation time using the wave configuration
+    game.preparation_end_time =
+        game.config.waves.preparation_seconds;
 
     open_window("Tower Defence", 1000, 700);
 
-    // Initialise spawn timer
+    // Create a timer for spawning and gameplay effects
     timer spawn_timer = create_timer("Spawn Timer");
     start_timer(spawn_timer);
 
-    int spawned_count = 0;
-    unsigned int last_spawn_time = 0;
+    // Store wave spawning progress separately from other game data
+    wave_state state{};
 
     bool menu_was_open = false;
 
@@ -32,14 +59,16 @@ int main()
     {
         process_events();
 
+        // Handle clicks on empty and occupied tower spots
         if (game.lives > 0)
         {
             handle_tower_click(game);
         }
 
-        bool menu_is_open = game.purchase_menu_open || game.management_menu_open;
+        bool menu_is_open = game.purchase_menu_open ||
+                            game.management_menu_open;
 
-        // Pause or resume the timer when either menu opens or closes
+        // Pause gameplay while a tower menu is open
         if (menu_is_open && !menu_was_open)
         {
             pause_timer(spawn_timer);
@@ -51,43 +80,62 @@ int main()
 
         menu_was_open = menu_is_open;
 
+        // Read the current gameplay time
+        unsigned int current_time = timer_ticks(spawn_timer);
+        double current_time_seconds = current_time / 1000.0;
+
+        game.current_time = current_time_seconds;
+
+        // Update gameplay while the player is alive and menus are closed
         if (game.lives > 0 && !menu_is_open)
         {
-            int enemies_per_wave = game.wave + 2;
-            unsigned int current_time = timer_ticks(spawn_timer);
+            // Update wave preparation and enemy spawning
+            update_wave(
+                game,
+                state,
+                current_time);
 
-            // Spawn one enemy every second
-            if (spawned_count < enemies_per_wave && current_time - last_spawn_time >= 1000)
+            if (game.phase == IN_WAVE)
             {
-                spawn_enemy(game);
-                spawned_count++;
-                last_spawn_time = current_time;
-            }
+                // Move active enemies along the path
+                update_enemies(
+                    game.enemies,
+                    game.path,
+                    game.lives,
+                    current_time_seconds);
 
-            // Update enemy movement
-            update_enemies(game.enemies, game.path, game.lives);
+                // Allow towers to find targets and fire projectiles
+                update_tower_attacks(
+                    game,
+                    current_time_seconds);
 
-            // Update tower attacks
-            double current_time_seconds = current_time / 1000.0;
-            update_tower_attacks(game, current_time_seconds);
+                // Move projectiles and process configurable reactions
+                update_projectiles(
+                    game.projectiles,
+                    game.enemies,
+                    game.coins,
+                    current_time_seconds,
+                    game.config.reactions);
 
-            // Update projectile movement and damage
-            update_projectiles(game.projectiles, game.enemies, game.coins);
+                // Apply ongoing effects such as BURNING damage
+                update_enemy_effects(
+                    game.enemies,
+                    current_time_seconds,
+                    game.coins);
 
-            // Remove inactive enemies and projectiles
-            remove_inactive_enemies(game.enemies);
-            remove_inactive_projectiles(game.projectiles);
+                // Remove defeated enemies and inactive projectiles
+                remove_inactive_enemies(game.enemies);
+                remove_inactive_projectiles(game.projectiles);
 
-            // Start the next wave when all enemies are gone
-            if (game.lives > 0 && spawned_count == enemies_per_wave && length(game.enemies) == 0)
-            {
-                game.wave++;
-                spawned_count = 0;
-                last_spawn_time = current_time;
+                // Check whether the wave has finished
+                complete_wave_if_finished(
+                    game,
+                    state,
+                    current_time_seconds);
             }
         }
 
-        // Draw the current game state
+        // Draw the map, towers, enemies and interface
         draw_game(game);
         draw_interface();
         refresh_screen(60);

@@ -3,8 +3,8 @@
 
 #include "models.h"
 
-void setup_path(dynamic_array<point_2d> &path);
-
-void setup_tower_spots(game_data &game);
+// Load the enemy path and tower placement spots from map.json
+// Return true if the map is valid and loaded successfully
+bool load_map(game_data &game);
 
 #endif

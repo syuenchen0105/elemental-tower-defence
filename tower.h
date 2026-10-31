@@ -3,33 +3,41 @@
 
 #include "models.h"
 
+// Purchase and place a tower at an available spot
 bool place_tower(
     game_data &game,
     int spot_index,
-    tower_type type
-);
+    tower_type type);
 
-void handle_tower_click(game_data &game);
+// Upgrade the selected tower if sufficient coins are available
+bool upgrade_tower(
+    game_data &game);
 
-bool enemy_in_range(
-    const tower &current_tower,
-    const tower_spot &spot,
-    const enemy &current_enemy
-);
+// Get the cost of the next upgrade, or zero if unavailable
+int get_upgrade_cost(
+    const game_data &game,
+    const tower &current_tower);
 
-int find_target(
-    const tower &current_tower,
-    const tower_spot &spot,
-    const dynamic_array<enemy> &enemies,
-    const dynamic_array<point_2d> &path
-);
+// Calculate the 70% refund based on the tower's total cost
+int get_sell_refund(
+    const tower &current_tower);
 
-void update_tower_attacks(game_data &game, double current_time);
+// Sell the selected tower and make its spot available again
+bool sell_tower(
+    game_data &game);
 
-void change_tower_targeting(game_data &game, targeting_mode mode);
+// Change the targeting strategy of the selected tower
+void change_tower_targeting(
+    game_data &game,
+    targeting_mode mode);
 
-int get_upgrade_cost(const tower &current_tower);
+// Handle mouse clicks to open tower purchase or management menus
+void handle_tower_click(
+    game_data &game);
 
-bool upgrade_tower(game_data &game);
+// Find valid enemy targets and fire projectiles when towers are ready
+void update_tower_attacks(
+    game_data &game,
+    double current_time);
 
 #endif
