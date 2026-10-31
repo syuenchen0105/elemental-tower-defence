@@ -26,12 +26,23 @@ int main()
         return 1;
     }
 
+    // Load wave timing, enemy counts and rewards from wave.json
+    if (!load_wave_config(game.config.waves))
+    {
+        write_line("Unable to start the game: wave loading failed.");
+        return 1;
+    }
+
     // Load the enemy path and tower spots from map.json
     if (!load_map(game))
     {
         write_line("Unable to start the game: map loading failed.");
         return 1;
     }
+
+    // Set the initial preparation time using the wave configuration
+    game.preparation_end_time =
+        game.config.waves.preparation_seconds;
 
     open_window("Tower Defence", 1000, 700);
 
