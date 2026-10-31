@@ -20,7 +20,7 @@
         "reward": 6
     },
     "BOSS": {
-        "health": 600,
+        "health": 500,
         "speed": 1.0,
         "reward": 80
     }
