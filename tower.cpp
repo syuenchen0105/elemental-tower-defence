@@ -2,6 +2,7 @@
 #include "config.h"
 #include "projectile.h"
 
+// Create a level 1 tower using its configuration statistics
 static tower create_tower(
     const tower_stats &stats,
     int id,
@@ -13,9 +14,11 @@ static tower create_tower(
     new_tower.spot_id = spot_id;
     new_tower.type = stats.type;
     new_tower.targeting = FIRST;
+
     new_tower.level = 1;
     new_tower.cost = stats.cost;
     new_tower.total_spent = stats.cost;
+
     new_tower.damage = stats.damage;
     new_tower.range = stats.range;
     new_tower.attack_delay = stats.attack_delay;
@@ -24,35 +27,45 @@ static tower create_tower(
     return new_tower;
 }
 
+// Place a tower at an available spot if the player has enough coins
 bool place_tower(
     game_data &game,
     int spot_index,
     tower_type type)
 {
-    if (spot_index < 0 || spot_index >= length(game.tower_spots))
+    // Check whether the selected spot index is valid
+    if (
+        spot_index < 0 ||
+        spot_index >= length(game.tower_spots))
     {
         return false;
     }
 
     tower_spot &spot = game.tower_spots[spot_index];
 
+    // Prevent placing multiple towers at the same spot
     if (spot.occupied)
     {
         return false;
     }
 
-    const tower_stats *stats = find_tower_stats(game.config, type);
+    // Find the selected tower type in the JSON configuration
+    const tower_stats *stats = find_tower_stats(
+        game.config,
+        type);
 
     if (stats == nullptr)
     {
         return false;
     }
 
+    // Reject the purchase if the player has insufficient coins
     if (game.coins < stats->cost)
     {
         return false;
     }
 
+    // Create the tower with a unique ID
     tower new_tower = create_tower(
         *stats,
         game.next_tower_id,
@@ -60,26 +73,38 @@ bool place_tower(
 
     game.next_tower_id++;
 
+    // Add the new tower to the dynamic array
     add(game.towers, new_tower);
 
+    // Mark the selected spot as occupied
     spot.occupied = true;
     spot.tower_id = new_tower.id;
 
+    // Deduct the tower's purchase cost
     game.coins -= stats->cost;
 
     return true;
 }
 
+// Check whether an active enemy is within a tower's attack range
 static bool enemy_in_range(
     const enemy &current_enemy,
     point_2d tower_position,
     double range)
 {
-    return point_point_distance(
-               current_enemy.position,
-               tower_position) <= range;
+    if (!current_enemy.active)
+    {
+        return false;
+    }
+
+    double distance = point_point_distance(
+        current_enemy.position,
+        tower_position);
+
+    return distance <= range;
 }
 
+// Compare two enemies according to the tower's targeting strategy
 static bool is_better_target(
     const enemy &checking_enemy,
     const enemy &selected_enemy,
@@ -91,56 +116,79 @@ static bool is_better_target(
     {
     case FIRST:
     {
-        if (checking_enemy.path_index != selected_enemy.path_index)
+        // Prioritise the enemy that has reached the furthest path segment
+        if (checking_enemy.path_index > selected_enemy.path_index)
         {
-            return checking_enemy.path_index > selected_enemy.path_index;
+            return true;
         }
 
-        int next_index = checking_enemy.path_index + 1;
-
-        if (next_index >= length(path))
+        if (checking_enemy.path_index < selected_enemy.path_index)
         {
             return false;
         }
 
-        return point_point_distance(
-                   checking_enemy.position,
-                   path[next_index]) < point_point_distance(selected_enemy.position,
-                                                            path[next_index]);
+        // On the same segment, prefer the enemy closer to the next waypoint
+        int next_path_index = checking_enemy.path_index + 1;
+
+        if (next_path_index < length(path))
+        {
+            double checking_distance = point_point_distance(
+                checking_enemy.position,
+                path[next_path_index]);
+
+            double selected_distance = point_point_distance(
+                selected_enemy.position,
+                path[next_path_index]);
+
+            return checking_distance < selected_distance;
+        }
+
+        return false;
     }
 
     case CLOSEST:
-        return point_point_distance(
-                   checking_enemy.position,
-                   tower_position) < point_point_distance(selected_enemy.position,
-                                                          tower_position);
+    {
+        // Prioritise the enemy physically closest to the tower
+        double checking_distance = point_point_distance(
+            checking_enemy.position,
+            tower_position);
+
+        double selected_distance = point_point_distance(
+            selected_enemy.position,
+            tower_position);
+
+        return checking_distance < selected_distance;
+    }
 
     case STRONGEST:
+    {
+        // Prioritise the enemy with the highest current health
         return checking_enemy.health > selected_enemy.health;
+    }
 
     case WEAKEST:
+    {
+        // Prioritise the enemy with the lowest current health
         return checking_enemy.health < selected_enemy.health;
+    }
     }
 
     return false;
 }
 
+// Search for the highest-priority active enemy within tower range
 static int find_target(
     const game_data &game,
     const tower &current_tower,
     const tower_spot &spot)
 {
-    int best_index = -1;
+    int selected_index = -1;
 
     for (int i = 0; i < length(game.enemies); i++)
     {
         const enemy &checking_enemy = game.enemies[i];
 
-        if (!checking_enemy.active)
-        {
-            continue;
-        }
-
+        // Ignore inactive enemies and enemies outside the attack range
         if (!enemy_in_range(
                 checking_enemy,
                 spot.position,
@@ -149,30 +197,40 @@ static int find_target(
             continue;
         }
 
-        if (best_index == -1 ||
-            is_better_target(
+        // Select the first valid enemy as the initial target
+        if (selected_index == -1)
+        {
+            selected_index = i;
+            continue;
+        }
+
+        // Replace the target when another enemy has higher priority
+        if (is_better_target(
                 checking_enemy,
-                game.enemies[best_index],
+                game.enemies[selected_index],
                 current_tower.targeting,
                 spot.position,
                 game.path))
         {
-            best_index = i;
+            selected_index = i;
         }
     }
 
-    if (best_index == -1)
+    // Return -1 when no valid target is available
+    if (selected_index == -1)
     {
         return -1;
     }
 
-    return game.enemies[best_index].id;
+    return game.enemies[selected_index].id;
 }
 
+// Retrieve the cost of the selected tower's next upgrade
 int get_upgrade_cost(
     const game_data &game,
     const tower &current_tower)
 {
+    // Level 5 is the maximum tower level
     if (current_tower.level >= 5)
     {
         return 0;
@@ -191,36 +249,37 @@ int get_upgrade_cost(
     return upgrade->cost;
 }
 
+// Upgrade the selected tower if an upgrade exists and coins are sufficient
 bool upgrade_tower(game_data &game)
 {
-    int spot_index = game.selected_spot_index;
-
-    if (spot_index < 0 || spot_index >= length(game.tower_spots))
+    // Check whether a valid tower spot is selected
+    if (
+        game.selected_spot_index < 0 ||
+        game.selected_spot_index >= length(game.tower_spots))
     {
         return false;
     }
 
-    const tower_spot &spot = game.tower_spots[spot_index];
+    int selected_tower_id =
+        game.tower_spots[game.selected_spot_index].tower_id;
 
-    if (!spot.occupied)
-    {
-        return false;
-    }
-
+    // Search for the selected tower using its unique ID
     for (int i = 0; i < length(game.towers); i++)
     {
         tower &current_tower = game.towers[i];
 
-        if (current_tower.id != spot.tower_id)
+        if (current_tower.id != selected_tower_id)
         {
             continue;
         }
 
+        // Prevent upgrades beyond the maximum level
         if (current_tower.level >= 5)
         {
             return false;
         }
 
+        // Retrieve the next upgrade's statistics from the configuration
         const tower_upgrade *upgrade = find_tower_upgrade(
             game.config,
             current_tower.type,
@@ -231,17 +290,24 @@ bool upgrade_tower(game_data &game)
             return false;
         }
 
+        // Check whether the player can afford the upgrade
         if (game.coins < upgrade->cost)
         {
             return false;
         }
 
+        // Deduct coins and track the amount spent for future selling
         game.coins -= upgrade->cost;
-
         current_tower.total_spent += upgrade->cost;
+
+        // Apply all statistics gained from the upgrade
         current_tower.damage += upgrade->damage_increase;
         current_tower.range += upgrade->range_increase;
-        current_tower.attack_delay -= upgrade->attack_delay_reduction;
+
+        current_tower.attack_delay -=
+            upgrade->attack_delay_reduction;
+
+        // Increase the tower level after applying the upgrade
         current_tower.level++;
 
         return true;
@@ -250,69 +316,74 @@ bool upgrade_tower(game_data &game)
     return false;
 }
 
-int get_sell_refund(
-    const tower &current_tower)
+// Calculate a 70% refund based on the tower's total purchase and upgrade costs
+int get_sell_refund(const tower &current_tower)
 {
     return current_tower.total_spent * 70 / 100;
 }
 
+// Sell the selected tower and make its placement spot available again
 bool sell_tower(game_data &game)
 {
-    int spot_index = game.selected_spot_index;
-
-    if (spot_index < 0 || spot_index >= length(game.tower_spots))
+    // Check whether the player has selected a valid spot
+    if (
+        game.selected_spot_index < 0 ||
+        game.selected_spot_index >= length(game.tower_spots))
     {
         return false;
     }
 
-    tower_spot &spot = game.tower_spots[spot_index];
+    tower_spot &spot = game.tower_spots[game.selected_spot_index];
 
+    // Only occupied spots can contain a tower to sell
     if (!spot.occupied)
     {
         return false;
     }
 
+    // Find the tower associated with the selected spot
     for (int i = 0; i < length(game.towers); i++)
     {
-        if (game.towers[i].id != spot.tower_id)
+        if (game.towers[i].id == spot.tower_id)
         {
-            continue;
+            // Refund 70% of the total coins invested
+            int refund = get_sell_refund(game.towers[i]);
+            game.coins += refund;
+
+            // Remove the tower from the dynamic array
+            remove(game.towers, i);
+
+            // Reset the spot so another tower can be purchased here
+            spot.occupied = false;
+            spot.tower_id = -1;
+
+            return true;
         }
-
-        game.coins += get_sell_refund(game.towers[i]);
-
-        remove(game.towers, i);
-
-        spot.occupied = false;
-        spot.tower_id = -1;
-
-        return true;
     }
 
     return false;
 }
 
+// Change the targeting strategy of the currently selected tower
 void change_tower_targeting(
     game_data &game,
     targeting_mode mode)
 {
-    int spot_index = game.selected_spot_index;
-
-    if (spot_index < 0 || spot_index >= length(game.tower_spots))
+    // Ignore invalid tower spot selections
+    if (
+        game.selected_spot_index < 0 ||
+        game.selected_spot_index >= length(game.tower_spots))
     {
         return;
     }
 
-    const tower_spot &spot = game.tower_spots[spot_index];
+    int selected_tower_id =
+        game.tower_spots[game.selected_spot_index].tower_id;
 
-    if (!spot.occupied)
-    {
-        return;
-    }
-
+    // Find the selected tower and update its targeting mode
     for (int i = 0; i < length(game.towers); i++)
     {
-        if (game.towers[i].id == spot.tower_id)
+        if (game.towers[i].id == selected_tower_id)
         {
             game.towers[i].targeting = mode;
             return;
@@ -320,13 +391,16 @@ void change_tower_targeting(
     }
 }
 
+// Handle mouse clicks on tower spots to open purchase or management menus
 void handle_tower_click(game_data &game)
 {
+    // Prevent selecting another spot while a tower menu is open
     if (game.purchase_menu_open || game.management_menu_open)
     {
         return;
     }
 
+    // Only process a new left mouse button click
     if (!mouse_clicked(LEFT_BUTTON))
     {
         return;
@@ -334,18 +408,23 @@ void handle_tower_click(game_data &game)
 
     point_2d mouse = mouse_position();
 
+    // Search for a tower spot clicked by the player
     for (int i = 0; i < length(game.tower_spots); i++)
     {
-        const tower_spot &spot = game.tower_spots[i];
+        double distance = point_point_distance(
+            mouse,
+            game.tower_spots[i].position);
 
-        if (point_point_distance(mouse, spot.position) <= 20)
+        if (distance <= 20.0)
         {
             game.selected_spot_index = i;
 
-            if (spot.occupied)
+            // Open the management menu for an existing tower
+            if (game.tower_spots[i].occupied)
             {
                 game.management_menu_open = true;
             }
+            // Open the purchase menu for an empty spot
             else
             {
                 game.purchase_menu_open = true;
@@ -356,6 +435,7 @@ void handle_tower_click(game_data &game)
     }
 }
 
+// Update tower attack timers and fire projectiles at valid targets
 void update_tower_attacks(
     game_data &game,
     double current_time)
@@ -364,21 +444,25 @@ void update_tower_attacks(
     {
         tower &current_tower = game.towers[i];
 
-        if (current_time - current_tower.last_attack_time <
+        // Wait until enough time has passed since the previous attack
+        if (
+            current_time - current_tower.last_attack_time <
             current_tower.attack_delay)
         {
             continue;
         }
 
+        // Find the placement spot belonging to this tower
         for (int j = 0; j < length(game.tower_spots); j++)
         {
             const tower_spot &spot = game.tower_spots[j];
 
-            if (current_tower.spot_id != spot.id)
+            if (spot.id != current_tower.spot_id)
             {
                 continue;
             }
 
+            // Search for an enemy based on the selected targeting strategy
             int target_enemy_id = find_target(
                 game,
                 current_tower,
@@ -386,12 +470,14 @@ void update_tower_attacks(
 
             if (target_enemy_id != -1)
             {
+                // Create a projectile directed toward the selected enemy
                 fire_projectile(
                     game.projectiles,
                     current_tower,
                     spot,
                     target_enemy_id);
 
+                // Reset the tower's attack cooldown after firing
                 current_tower.last_attack_time = current_time;
             }
 

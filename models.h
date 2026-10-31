@@ -4,6 +4,7 @@
 #include "splashkit.h"
 #include "splashkit-arrays.h"
 
+// Different enemy types with unique statistics
 enum enemy_type
 {
     NORMAL,
@@ -13,6 +14,7 @@ enum enemy_type
     BOSS
 };
 
+// Four elemental tower types
 enum tower_type
 {
     FIRE,
@@ -21,6 +23,7 @@ enum tower_type
     EARTH
 };
 
+// Strategies used by towers to select enemies
 enum targeting_mode
 {
     FIRST,
@@ -29,6 +32,7 @@ enum targeting_mode
     WEAKEST
 };
 
+// Elemental status effects applied to enemies
 enum effect_type
 {
     BURNING,
@@ -38,6 +42,14 @@ enum effect_type
     EFFECT_COUNT
 };
 
+// Different phases of the wave system
+enum game_phase
+{
+    PREPARATION,
+    IN_WAVE
+};
+
+// Base tower statistics loaded from JSON
 struct tower_stats
 {
     tower_type type;
@@ -47,6 +59,7 @@ struct tower_stats
     double attack_delay;
 };
 
+// Tower upgrade statistics loaded from JSON
 struct tower_upgrade
 {
     tower_type type;
@@ -57,6 +70,7 @@ struct tower_upgrade
     double attack_delay_reduction;
 };
 
+// Base enemy statistics loaded from JSON
 struct enemy_stats
 {
     enemy_type type;
@@ -65,6 +79,7 @@ struct enemy_stats
     int reward;
 };
 
+// Stores all configuration data used by the game
 struct game_config
 {
     dynamic_array<tower_stats> tower_definitions;
@@ -72,6 +87,7 @@ struct game_config
     dynamic_array<enemy_stats> enemy_definitions;
 };
 
+// Tracks the duration of elemental effects and movement restrictions
 struct enemy_effects
 {
     fixed_array<double, EFFECT_COUNT> end_times{0.0};
@@ -85,6 +101,7 @@ struct enemy_effects
     double reaction_cooldown_end_time = 0.0;
 };
 
+// Represents an enemy moving along the path
 struct enemy
 {
     int id;
@@ -101,6 +118,7 @@ struct enemy
     enemy_effects effects;
 };
 
+// Represents a tower purchased and upgraded by the player
 struct tower
 {
     int id;
@@ -118,6 +136,7 @@ struct tower
     double last_attack_time;
 };
 
+// Represents a projectile travelling toward an enemy
 struct projectile
 {
     point_2d position;
@@ -129,6 +148,7 @@ struct projectile
     bool active;
 };
 
+// Represents a fixed location where a tower can be placed
 struct tower_spot
 {
     int id;
@@ -137,6 +157,7 @@ struct tower_spot
     int tower_id;
 };
 
+// Stores the current game state and all active entities
 struct game_data
 {
     game_config config;
@@ -147,17 +168,25 @@ struct game_data
     dynamic_array<tower_spot> tower_spots;
     dynamic_array<point_2d> path;
 
+    // Player resources and wave progression
     int coins;
     int lives;
     int wave;
 
+    // Unique identifiers for enemies, towers and spots
     int next_enemy_id = 1;
     int next_tower_id = 1;
     int next_spot_id = 1;
 
+    // Tower menu selection and visibility
     bool purchase_menu_open = false;
     bool management_menu_open = false;
     int selected_spot_index = -1;
+
+    // Wave preparation and gameplay timing
+    game_phase phase = PREPARATION;
+    double current_time = 0.0;
+    double preparation_end_time = 10.0;
 };
 
 #endif

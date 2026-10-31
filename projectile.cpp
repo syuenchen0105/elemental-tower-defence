@@ -1,6 +1,7 @@
 #include "projectile.h"
 #include "effects.h"
 
+// Create a projectile that travels toward a target enemy
 void fire_projectile(
     dynamic_array<projectile> &projectiles,
     const tower &current_tower,
@@ -19,6 +20,7 @@ void fire_projectile(
     add(projectiles, new_projectile);
 }
 
+// Find an enemy's array index using its unique ID
 static int find_enemy_index(
     const dynamic_array<enemy> &enemies,
     int enemy_id)
@@ -34,6 +36,7 @@ static int find_enemy_index(
     return -1;
 }
 
+// Move a projectile toward its target and report whether it has arrived
 static bool move_projectile(
     projectile &current_projectile,
     point_2d target_position)
@@ -52,7 +55,7 @@ static bool move_projectile(
         return true;
     }
 
-    // Move toward the target
+    // Move toward the target using a unit direction vector
     current_projectile.position.x +=
         (dx / distance) * current_projectile.speed;
 
@@ -62,6 +65,34 @@ static bool move_projectile(
     return false;
 }
 
+// Calculate projectile damage after applying enemy resistances
+static int calculate_projectile_damage(
+    const projectile &current_projectile,
+    const enemy &current_enemy)
+{
+    int damage = current_projectile.damage;
+
+    // TANK enemies resist 30% of EARTH projectile damage
+    if (current_enemy.type == TANK && current_projectile.type == EARTH)
+    {
+        damage = damage * 70 / 100;
+    }
+    // BOSS enemies resist 20% of all direct projectile damage
+    else if (current_enemy.type == BOSS)
+    {
+        damage = damage * 80 / 100;
+    }
+
+    // Ensure a projectile always deals at least 1 damage
+    if (damage < 1)
+    {
+        damage = 1;
+    }
+
+    return damage;
+}
+
+// Apply the elemental status associated with a projectile's tower type
 static void apply_projectile_effect(
     const projectile &current_projectile,
     enemy &current_enemy,
@@ -70,6 +101,7 @@ static void apply_projectile_effect(
     switch (current_projectile.type)
     {
     case FIRE:
+        // Initialise burning damage timing only when burning is inactive
         if (!is_effect_active(current_enemy, BURNING, current_time))
         {
             current_enemy.effects.next_burn_tick_time =
@@ -85,6 +117,7 @@ static void apply_projectile_effect(
         break;
 
     case WATER:
+        // Apply WET status and its separate movement slowdown
         apply_effect(
             current_enemy,
             WET,
@@ -118,21 +151,25 @@ static void apply_projectile_effect(
     }
 }
 
+// Apply projectile damage and its elemental status if the enemy survives
 static void handle_projectile_hit(
     projectile &current_projectile,
     enemy &current_enemy,
     int &coins,
     double current_time)
 {
-    // Deactivate the projectile and apply damage
+    // Deactivate the projectile after reaching its target
     current_projectile.active = false;
+
+    int damage = calculate_projectile_damage(
+        current_projectile,
+        current_enemy);
 
     damage_enemy(
         current_enemy,
-        current_projectile.damage,
+        damage,
         coins);
 
-    // Apply elemental status if the enemy survives
     if (current_enemy.active)
     {
         apply_projectile_effect(
@@ -142,6 +179,7 @@ static void handle_projectile_hit(
     }
 }
 
+// Update active projectiles and handle hits and elemental reactions
 void update_projectiles(
     dynamic_array<projectile> &projectiles,
     dynamic_array<enemy> &enemies,
@@ -167,7 +205,7 @@ void update_projectiles(
             continue;
         }
 
-        // Move projectile toward the enemy
+        // Move the projectile and process its hit when it reaches the enemy
         if (move_projectile(
                 projectiles[i],
                 enemies[target_index].position))
@@ -178,7 +216,7 @@ void update_projectiles(
                 coins,
                 current_time);
 
-            // Check for elemental reactions after the hit
+            // Check for elemental reactions after applying the status
             if (enemies[target_index].active)
             {
                 try_trigger_reaction(
@@ -191,6 +229,7 @@ void update_projectiles(
     }
 }
 
+// Remove inactive projectiles by iterating backward through the array
 void remove_inactive_projectiles(
     dynamic_array<projectile> &projectiles)
 {
