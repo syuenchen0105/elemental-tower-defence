@@ -105,7 +105,7 @@ bool load_reaction_config(
         general_data,
         "boss_control_multiplier");
 
-    // Load each reaction into its corresponding fixed-array position
+    // Load each reaction into its fixed-array position
     bool valid =
         read_reaction_stats(
             reactions_data,
@@ -132,7 +132,7 @@ bool load_reaction_config(
             "SHATTER",
             loaded.definitions[SHATTER]);
 
-    // Validate shared values before accepting the configuration
+    // Validate shared settings before accepting the configuration
     if (
         loaded.max_aoe_targets < 1 ||
         loaded.stun_cooldown < 0.0 ||
@@ -151,7 +151,7 @@ bool load_reaction_config(
         write_line("Error: Invalid reaction values in reactions.json.");
     }
 
-    // Release all JSON resources after loading
+    // Release JSON resources after loading
     free_json(general_data);
     free_json(reactions_data);
     free_json(root);
@@ -229,27 +229,34 @@ void damage_enemy(
     }
 }
 
-// Apply periodic BURNING damage every 0.5 seconds
+// Apply periodic BURNING damage at fixed time intervals
 static void update_burning(
     enemy &current_enemy,
     double current_time,
     int &coins)
 {
+    const int BURNING_TICK_DAMAGE = 2;
+    const double BURNING_TICK_INTERVAL = 0.5;
+
     if (current_enemy.effects.next_burn_tick_time <= 0.0)
     {
         return;
     }
 
-    // Process all burning ticks that have occurred
+    // Process every burning tick that has occurred
     while (
         current_enemy.active &&
         current_enemy.effects.next_burn_tick_time <= current_time &&
         current_enemy.effects.next_burn_tick_time <=
             current_enemy.effects.end_times[BURNING])
     {
-        damage_enemy(current_enemy, 2, coins);
+        damage_enemy(
+            current_enemy,
+            BURNING_TICK_DAMAGE,
+            coins);
 
-        current_enemy.effects.next_burn_tick_time += 0.5;
+        current_enemy.effects.next_burn_tick_time +=
+            BURNING_TICK_INTERVAL;
     }
 }
 
@@ -317,7 +324,7 @@ static void consume_effect(
 {
     current_enemy.effects.end_times[type] = current_time;
 
-    // Remove the movement slowdown when WET is consumed
+    // Remove movement slowdown when WET is consumed
     if (type == WET)
     {
         current_enemy.effects.wet_slow_end_time = current_time;
@@ -458,7 +465,7 @@ static void apply_stun(
         current_time + settings.stun_cooldown;
 }
 
-// Apply temporary immobilisation, with shorter duration for bosses
+// Apply temporary immobilisation with a shorter duration for bosses
 static void apply_immobilize(
     enemy &current_enemy,
     double current_time,
@@ -476,7 +483,7 @@ static void apply_immobilize(
         duration);
 }
 
-// Damage the triggering enemy and a limited number of nearby enemies
+// Damage the triggering enemy and nearby enemies within the target limit
 static void apply_area_damage(
     dynamic_array<enemy> &enemies,
     int enemy_index,
@@ -501,7 +508,7 @@ static void apply_area_damage(
 
     int affected_count = 1;
 
-    // Search for nearby enemies inside the reaction radius
+    // Search for active enemies within the reaction radius
     for (int i = 0; i < length(enemies); i++)
     {
         if (affected_count >= max_targets)
@@ -526,7 +533,7 @@ static void apply_area_damage(
     }
 }
 
-// Detect and execute a reaction using the loaded JSON statistics
+// Detect and execute a reaction using the JSON configuration
 void try_trigger_reaction(
     dynamic_array<enemy> &enemies,
     int enemy_index,
@@ -541,7 +548,7 @@ void try_trigger_reaction(
 
     enemy &current_enemy = enemies[enemy_index];
 
-    // Determine whether the enemy has a valid elemental pair
+    // Determine whether an elemental pair is currently active
     reaction_type type = find_reaction(
         current_enemy,
         current_time);
@@ -551,20 +558,23 @@ void try_trigger_reaction(
         return;
     }
 
-    // Retrieve the reaction's damage and durations from configuration
+    // Retrieve the reaction statistics loaded from JSON
     const reaction_stats &stats = settings.definitions[type];
 
-    // Remove the two elemental effects consumed by the reaction
+    // Remove the two elemental statuses consumed by the reaction
     consume_reaction_effects(
         current_enemy,
         type,
         current_time);
 
-    // Apply the appropriate damage or movement restriction
+    // Apply damage or movement restrictions for the selected reaction
     switch (type)
     {
     case ELECTROSHOCK:
-        damage_enemy(current_enemy, stats.damage, coins);
+        damage_enemy(
+            current_enemy,
+            stats.damage,
+            coins);
 
         if (current_enemy.active)
         {
@@ -577,11 +587,17 @@ void try_trigger_reaction(
         break;
 
     case VAPORIZE:
-        damage_enemy(current_enemy, stats.damage, coins);
+        damage_enemy(
+            current_enemy,
+            stats.damage,
+            coins);
         break;
 
     case MUD_TRAP:
-        damage_enemy(current_enemy, stats.damage, coins);
+        damage_enemy(
+            current_enemy,
+            stats.damage,
+            coins);
 
         if (current_enemy.active)
         {
@@ -605,14 +621,17 @@ void try_trigger_reaction(
         break;
 
     case SHATTER:
-        damage_enemy(current_enemy, stats.damage, coins);
+        damage_enemy(
+            current_enemy,
+            stats.damage,
+            coins);
         break;
 
     case REACTION_COUNT:
         break;
     }
 
-    // Apply the reaction-specific cooldown loaded from JSON
+    // Apply the cooldown configured for this reaction
     start_reaction_cooldown(
         current_enemy,
         current_time,

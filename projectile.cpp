@@ -8,13 +8,15 @@ void fire_projectile(
     const tower_spot &spot,
     int target_enemy_id)
 {
+    const double PROJECTILE_SPEED = 5.0;
+
     projectile new_projectile{};
 
     new_projectile.position = spot.position;
     new_projectile.target_enemy_id = target_enemy_id;
     new_projectile.type = current_tower.type;
     new_projectile.damage = current_tower.damage;
-    new_projectile.speed = 5.0;
+    new_projectile.speed = PROJECTILE_SPEED;
     new_projectile.active = true;
 
     add(projectiles, new_projectile);
@@ -70,23 +72,32 @@ static int calculate_projectile_damage(
     const projectile &current_projectile,
     const enemy &current_enemy)
 {
+    const int TANK_EARTH_DAMAGE_PERCENT = 70;
+    const int BOSS_DAMAGE_PERCENT = 80;
+    const int PERCENT_DIVISOR = 100;
+    const int MINIMUM_DAMAGE = 1;
+
     int damage = current_projectile.damage;
 
-    // TANK enemies resist 30% of EARTH projectile damage
-    if (current_enemy.type == TANK && current_projectile.type == EARTH)
+    // TANK enemies take 70% damage from EARTH projectiles
+    if (
+        current_enemy.type == TANK &&
+        current_projectile.type == EARTH)
     {
-        damage = damage * 70 / 100;
+        damage =
+            damage * TANK_EARTH_DAMAGE_PERCENT / PERCENT_DIVISOR;
     }
-    // BOSS enemies resist 20% of all direct projectile damage
+    // BOSS enemies take 80% direct projectile damage
     else if (current_enemy.type == BOSS)
     {
-        damage = damage * 80 / 100;
+        damage =
+            damage * BOSS_DAMAGE_PERCENT / PERCENT_DIVISOR;
     }
 
-    // Ensure a projectile always deals at least 1 damage
-    if (damage < 1)
+    // Ensure every successful projectile hit deals at least 1 damage
+    if (damage < MINIMUM_DAMAGE)
     {
-        damage = 1;
+        damage = MINIMUM_DAMAGE;
     }
 
     return damage;
@@ -98,36 +109,43 @@ static void apply_projectile_effect(
     enemy &current_enemy,
     double current_time)
 {
+    // Elemental effect durations and burning tick timing
+    const double BURNING_DURATION = 2.5;
+    const double BURNING_TICK_INTERVAL = 0.5;
+    const double WET_DURATION = 3.0;
+    const double CHARGED_DURATION = 2.5;
+    const double CRACKED_DURATION = 2.5;
+
     switch (current_projectile.type)
     {
     case FIRE:
-        // Initialise burning timing only when burning is inactive
+        // Start burning ticks only if the enemy is not already burning
         if (!is_effect_active(current_enemy, BURNING, current_time))
         {
             current_enemy.effects.next_burn_tick_time =
-                current_time + 0.5;
+                current_time + BURNING_TICK_INTERVAL;
         }
 
         apply_effect(
             current_enemy,
             BURNING,
             current_time,
-            2.5);
+            BURNING_DURATION);
 
         break;
 
     case WATER:
-        // Apply WET and its separate movement slowdown
+        // Apply WET status and its separate movement slowdown
         apply_effect(
             current_enemy,
             WET,
             current_time,
-            3.0);
+            WET_DURATION);
 
         apply_wet_slow(
             current_enemy,
             current_time,
-            3.0);
+            WET_DURATION);
 
         break;
 
@@ -136,7 +154,7 @@ static void apply_projectile_effect(
             current_enemy,
             CHARGED,
             current_time,
-            2.5);
+            CHARGED_DURATION);
 
         break;
 
@@ -145,7 +163,7 @@ static void apply_projectile_effect(
             current_enemy,
             CRACKED,
             current_time,
-            2.5);
+            CRACKED_DURATION);
 
         break;
     }
@@ -206,7 +224,7 @@ void update_projectiles(
             continue;
         }
 
-        // Move the projectile and process its hit on arrival
+        // Move the projectile and process its hit when it arrives
         if (move_projectile(
                 projectiles[i],
                 enemies[target_index].position))
@@ -217,7 +235,7 @@ void update_projectiles(
                 coins,
                 current_time);
 
-            // Check for reactions after the projectile applies a status
+            // Check for reactions after a projectile applies its effect
             if (enemies[target_index].active)
             {
                 try_trigger_reaction(

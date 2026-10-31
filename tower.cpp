@@ -8,6 +8,8 @@ static tower create_tower(
     int id,
     int spot_id)
 {
+    const int STARTING_TOWER_LEVEL = 1;
+
     tower new_tower{};
 
     new_tower.id = id;
@@ -15,7 +17,7 @@ static tower create_tower(
     new_tower.type = stats.type;
     new_tower.targeting = FIRST;
 
-    new_tower.level = 1;
+    new_tower.level = STARTING_TOWER_LEVEL;
     new_tower.cost = stats.cost;
     new_tower.total_spent = stats.cost;
 
@@ -116,7 +118,7 @@ static bool is_better_target(
     {
     case FIRST:
     {
-        // Prioritise the enemy that has reached the furthest path segment
+        // Prioritise the enemy furthest along the path
         if (checking_enemy.path_index > selected_enemy.path_index)
         {
             return true;
@@ -188,7 +190,7 @@ static int find_target(
     {
         const enemy &checking_enemy = game.enemies[i];
 
-        // Ignore inactive enemies and enemies outside the attack range
+        // Ignore inactive enemies and enemies outside attack range
         if (!enemy_in_range(
                 checking_enemy,
                 spot.position,
@@ -230,8 +232,10 @@ int get_upgrade_cost(
     const game_data &game,
     const tower &current_tower)
 {
-    // Level 5 is the maximum tower level
-    if (current_tower.level >= 5)
+    const int MAX_TOWER_LEVEL = 5;
+
+    // Prevent upgrades beyond the maximum level
+    if (current_tower.level >= MAX_TOWER_LEVEL)
     {
         return 0;
     }
@@ -252,6 +256,8 @@ int get_upgrade_cost(
 // Upgrade the selected tower if an upgrade exists and coins are sufficient
 bool upgrade_tower(game_data &game)
 {
+    const int MAX_TOWER_LEVEL = 5;
+
     // Check whether a valid tower spot is selected
     if (
         game.selected_spot_index < 0 ||
@@ -263,7 +269,7 @@ bool upgrade_tower(game_data &game)
     int selected_tower_id =
         game.tower_spots[game.selected_spot_index].tower_id;
 
-    // Search for the selected tower using its unique ID
+    // Find the selected tower using its unique ID
     for (int i = 0; i < length(game.towers); i++)
     {
         tower &current_tower = game.towers[i];
@@ -273,13 +279,13 @@ bool upgrade_tower(game_data &game)
             continue;
         }
 
-        // Prevent upgrades beyond the maximum level
-        if (current_tower.level >= 5)
+        // Prevent upgrading beyond the maximum level
+        if (current_tower.level >= MAX_TOWER_LEVEL)
         {
             return false;
         }
 
-        // Retrieve the next upgrade's statistics from the configuration
+        // Find the next upgrade in the JSON configuration
         const tower_upgrade *upgrade = find_tower_upgrade(
             game.config,
             current_tower.type,
@@ -290,24 +296,24 @@ bool upgrade_tower(game_data &game)
             return false;
         }
 
-        // Check whether the player can afford the upgrade
+        // Check whether the player has enough coins
         if (game.coins < upgrade->cost)
         {
             return false;
         }
 
-        // Deduct coins and track the amount spent for future selling
+        // Deduct coins and track the amount spent for selling
         game.coins -= upgrade->cost;
         current_tower.total_spent += upgrade->cost;
 
-        // Apply all statistics gained from the upgrade
+        // Apply the upgrade's damage, range and attack speed changes
         current_tower.damage += upgrade->damage_increase;
         current_tower.range += upgrade->range_increase;
 
         current_tower.attack_delay -=
             upgrade->attack_delay_reduction;
 
-        // Increase the tower level after applying the upgrade
+        // Increase the tower level
         current_tower.level++;
 
         return true;
@@ -316,16 +322,22 @@ bool upgrade_tower(game_data &game)
     return false;
 }
 
-// Calculate a 70% refund based on the tower's total purchase and upgrade costs
+// Calculate the selling refund from the total amount spent
 int get_sell_refund(const tower &current_tower)
 {
-    return current_tower.total_spent * 70 / 100;
+    const int SELL_REFUND_PERCENT = 70;
+    const int PERCENT_DIVISOR = 100;
+
+    // Integer division rounds the refund down
+    return current_tower.total_spent *
+           SELL_REFUND_PERCENT /
+           PERCENT_DIVISOR;
 }
 
 // Sell the selected tower and make its placement spot available again
 bool sell_tower(game_data &game)
 {
-    // Check whether the player has selected a valid spot
+    // Check whether the selected spot is valid
     if (
         game.selected_spot_index < 0 ||
         game.selected_spot_index >= length(game.tower_spots))
@@ -346,14 +358,14 @@ bool sell_tower(game_data &game)
     {
         if (game.towers[i].id == spot.tower_id)
         {
-            // Refund 70% of the total coins invested
+            // Refund a percentage of the total coins invested
             int refund = get_sell_refund(game.towers[i]);
             game.coins += refund;
 
             // Remove the tower from the dynamic array
             remove(game.towers, i);
 
-            // Reset the spot so another tower can be purchased here
+            // Reset the spot for a future purchase
             spot.occupied = false;
             spot.tower_id = -1;
 
@@ -394,7 +406,9 @@ void change_tower_targeting(
 // Handle mouse clicks on tower spots to open purchase or management menus
 void handle_tower_click(game_data &game)
 {
-    // Prevent selecting another spot while a tower menu is open
+    const double TOWER_SPOT_CLICK_RADIUS = 20.0;
+
+    // Prevent selecting another spot while a menu is open
     if (game.purchase_menu_open || game.management_menu_open)
     {
         return;
@@ -408,23 +422,22 @@ void handle_tower_click(game_data &game)
 
     point_2d mouse = mouse_position();
 
-    // Search for a tower spot clicked by the player
+    // Search for the tower spot clicked by the player
     for (int i = 0; i < length(game.tower_spots); i++)
     {
         double distance = point_point_distance(
             mouse,
             game.tower_spots[i].position);
 
-        if (distance <= 20.0)
+        if (distance <= TOWER_SPOT_CLICK_RADIUS)
         {
             game.selected_spot_index = i;
 
-            // Open the management menu for an existing tower
+            // Open the appropriate menu based on occupancy
             if (game.tower_spots[i].occupied)
             {
                 game.management_menu_open = true;
             }
-            // Open the purchase menu for an empty spot
             else
             {
                 game.purchase_menu_open = true;
@@ -435,7 +448,7 @@ void handle_tower_click(game_data &game)
     }
 }
 
-// Update tower attack timers and fire projectiles at valid targets
+// Update tower cooldowns and fire projectiles at valid targets
 void update_tower_attacks(
     game_data &game,
     double current_time)
@@ -444,7 +457,7 @@ void update_tower_attacks(
     {
         tower &current_tower = game.towers[i];
 
-        // Wait until enough time has passed since the previous attack
+        // Wait until the tower's attack cooldown has expired
         if (
             current_time - current_tower.last_attack_time <
             current_tower.attack_delay)
@@ -462,7 +475,7 @@ void update_tower_attacks(
                 continue;
             }
 
-            // Search for an enemy based on the selected targeting strategy
+            // Find an enemy using the selected targeting strategy
             int target_enemy_id = find_target(
                 game,
                 current_tower,
@@ -470,14 +483,14 @@ void update_tower_attacks(
 
             if (target_enemy_id != -1)
             {
-                // Create a projectile directed toward the selected enemy
+                // Fire a projectile toward the selected enemy
                 fire_projectile(
                     game.projectiles,
                     current_tower,
                     spot,
                     target_enemy_id);
 
-                // Reset the tower's attack cooldown after firing
+                // Reset the tower's attack cooldown
                 current_tower.last_attack_time = current_time;
             }
 
