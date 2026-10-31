@@ -15,7 +15,8 @@ void update_projectiles(
     dynamic_array<projectile> &projectiles,
     dynamic_array<enemy> &enemies,
     int &coins,
-    double current_time);
+    double current_time,
+    const reaction_config &settings);
 
 // Remove projectiles that have hit or lost their targets
 void remove_inactive_projectiles(

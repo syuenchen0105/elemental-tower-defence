@@ -42,6 +42,18 @@ enum effect_type
     EFFECT_COUNT
 };
 
+// Six possible elemental reactions
+enum reaction_type
+{
+    ELECTROSHOCK,
+    VAPORIZE,
+    MUD_TRAP,
+    OVERLOAD,
+    MAGMA_BURST,
+    SHATTER,
+    REACTION_COUNT
+};
+
 // Different phases of the wave system
 enum game_phase
 {
@@ -79,12 +91,33 @@ struct enemy_stats
     int reward;
 };
 
+// Statistics for an individual elemental reaction
+struct reaction_stats
+{
+    int damage = 0;
+    double radius = 0.0;
+    double control_duration = 0.0;
+    double cooldown = 0.0;
+};
+
+// Configuration shared by all six elemental reactions
+struct reaction_config
+{
+    fixed_array<reaction_stats, REACTION_COUNT> definitions{};
+
+    int max_aoe_targets = 3;
+    double stun_cooldown = 3.0;
+    double boss_control_multiplier = 0.5;
+};
+
 // Stores all configuration data used by the game
 struct game_config
 {
     dynamic_array<tower_stats> tower_definitions;
     dynamic_array<tower_upgrade> tower_upgrades;
     dynamic_array<enemy_stats> enemy_definitions;
+
+    reaction_config reactions;
 };
 
 // Tracks the duration of elemental effects and movement restrictions

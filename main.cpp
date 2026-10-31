@@ -19,6 +19,13 @@ int main()
     load_tower_upgrades(game.config.tower_upgrades);
     load_enemy_stats(game.config.enemy_definitions);
 
+    // Load the configurable elemental reaction statistics
+    if (!load_reaction_config(game.config.reactions))
+    {
+        write_line("Unable to start the game: reaction loading failed.");
+        return 1;
+    }
+
     // Load the enemy path and tower spots from map.json
     if (!load_map(game))
     {
@@ -91,12 +98,13 @@ int main()
                     game,
                     current_time_seconds);
 
-                // Move projectiles and process elemental reactions
+                // Move projectiles and process configurable reactions
                 update_projectiles(
                     game.projectiles,
                     game.enemies,
                     game.coins,
-                    current_time_seconds);
+                    current_time_seconds,
+                    game.config.reactions);
 
                 // Apply ongoing effects such as BURNING damage
                 update_enemy_effects(

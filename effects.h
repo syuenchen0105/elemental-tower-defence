@@ -3,6 +3,10 @@
 
 #include "models.h"
 
+// Load all reaction damage, durations and cooldowns from reactions.json
+bool load_reaction_config(
+    reaction_config &settings);
+
 // Apply or extend an elemental status effect on an enemy
 void apply_effect(
     enemy &current_enemy,
@@ -45,11 +49,12 @@ void start_reaction_cooldown(
     double current_time,
     double duration);
 
-// Detect and apply elemental reactions between two active statuses
+// Detect and apply a reaction using settings loaded from JSON
 void try_trigger_reaction(
     dynamic_array<enemy> &enemies,
     int enemy_index,
     double current_time,
-    int &coins);
+    int &coins,
+    const reaction_config &settings);
 
 #endif

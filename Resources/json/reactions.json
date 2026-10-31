@@ -1,0 +1,45 @@
+{
+    "settings": {
+        "max_aoe_targets": 3,
+        "stun_cooldown": 3.0,
+        "boss_control_multiplier": 0.5
+    },
+    "reactions": {
+        "ELECTROSHOCK": {
+            "damage": 8,
+            "radius": 0,
+            "control_duration": 0.4,
+            "cooldown": 2.5
+        },
+        "VAPORIZE": {
+            "damage": 12,
+            "radius": 0,
+            "control_duration": 0,
+            "cooldown": 2.5
+        },
+        "MUD_TRAP": {
+            "damage": 5,
+            "radius": 0,
+            "control_duration": 0.6,
+            "cooldown": 2.5
+        },
+        "OVERLOAD": {
+            "damage": 10,
+            "radius": 45,
+            "control_duration": 0,
+            "cooldown": 2.5
+        },
+        "MAGMA_BURST": {
+            "damage": 14,
+            "radius": 50,
+            "control_duration": 0,
+            "cooldown": 2.5
+        },
+        "SHATTER": {
+            "damage": 18,
+            "radius": 0,
+            "control_duration": 0,
+            "cooldown": 2.5
+        }
+    }
+}

@@ -101,7 +101,7 @@ static void apply_projectile_effect(
     switch (current_projectile.type)
     {
     case FIRE:
-        // Initialise burning damage timing only when burning is inactive
+        // Initialise burning timing only when burning is inactive
         if (!is_effect_active(current_enemy, BURNING, current_time))
         {
             current_enemy.effects.next_burn_tick_time =
@@ -117,7 +117,7 @@ static void apply_projectile_effect(
         break;
 
     case WATER:
-        // Apply WET status and its separate movement slowdown
+        // Apply WET and its separate movement slowdown
         apply_effect(
             current_enemy,
             WET,
@@ -179,12 +179,13 @@ static void handle_projectile_hit(
     }
 }
 
-// Update active projectiles and handle hits and elemental reactions
+// Update projectiles and check reactions using the loaded configuration
 void update_projectiles(
     dynamic_array<projectile> &projectiles,
     dynamic_array<enemy> &enemies,
     int &coins,
-    double current_time)
+    double current_time,
+    const reaction_config &settings)
 {
     for (int i = 0; i < length(projectiles); i++)
     {
@@ -198,14 +199,14 @@ void update_projectiles(
             enemies,
             projectiles[i].target_enemy_id);
 
-        // Deactivate the projectile if its target is missing or inactive
+        // Deactivate projectiles whose targets are missing or inactive
         if (target_index == -1 || !enemies[target_index].active)
         {
             projectiles[i].active = false;
             continue;
         }
 
-        // Move the projectile and process its hit when it reaches the enemy
+        // Move the projectile and process its hit on arrival
         if (move_projectile(
                 projectiles[i],
                 enemies[target_index].position))
@@ -216,14 +217,15 @@ void update_projectiles(
                 coins,
                 current_time);
 
-            // Check for elemental reactions after applying the status
+            // Check for reactions after the projectile applies a status
             if (enemies[target_index].active)
             {
                 try_trigger_reaction(
                     enemies,
                     target_index,
                     current_time,
-                    coins);
+                    coins,
+                    settings);
             }
         }
     }
