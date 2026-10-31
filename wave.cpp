@@ -69,11 +69,9 @@ bool load_wave_config(wave_config &settings)
     loaded.first_wave_enemies = first_wave_enemies;
     loaded.enemies_added_per_wave = enemies_added_per_wave;
 
-    loaded.regular_spawn_interval_ms =
-        static_cast<unsigned int>(regular_interval);
-
-    loaded.swarm_spawn_interval_ms =
-        static_cast<unsigned int>(swarm_interval);
+    // Store the validated enemy spawn intervals
+    loaded.regular_spawn_interval_ms = regular_interval;
+    loaded.swarm_spawn_interval_ms = swarm_interval;
 
     loaded.preparation_seconds = preparation_seconds;
     loaded.completion_reward = completion_reward;

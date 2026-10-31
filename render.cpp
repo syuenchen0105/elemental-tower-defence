@@ -138,8 +138,7 @@ void draw_enemies(const dynamic_array<enemy> &enemies)
         if (current_enemy.max_health > 0)
         {
             health_ratio =
-                static_cast<double>(current_enemy.health) /
-                current_enemy.max_health;
+                current_enemy.health * 1.0 / current_enemy.max_health;
         }
 
         // Keep the health ratio between zero and one
@@ -666,8 +665,13 @@ static void draw_preparation_panel(game_data &game)
         remaining_time = 0.0;
     }
 
-    // Round up to display the remaining whole seconds
-    int countdown = static_cast<int>(remaining_time + 0.999);
+    // Round up the remaining preparation time
+    int countdown = remaining_time;
+
+    if (remaining_time > countdown)
+    {
+        countdown++;
+    }
 
     double panel_x = 550;
     double panel_y = 10;
