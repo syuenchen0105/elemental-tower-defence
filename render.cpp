@@ -59,12 +59,15 @@ void draw_tower_spots(const dynamic_array<tower_spot> &spots)
     {
         if (!spots[i].occupied)
         {
-            fill_circle(COLOR_BLUE, spots[i].position, 20);
+            fill_circle(
+                COLOR_BLUE,
+                spots[i].position,
+                20);
         }
     }
 }
 
-// Draw each tower at its corresponding placement spot
+// Draw each purchased tower at its corresponding placement spot
 void draw_towers(
     const dynamic_array<tower> &towers,
     const dynamic_array<tower_spot> &spots)
@@ -77,6 +80,7 @@ void draw_towers(
             {
                 color tower_color = COLOR_WHITE;
 
+                // Choose a colour based on the tower's element
                 switch (towers[i].type)
                 {
                 case FIRE:
@@ -96,14 +100,18 @@ void draw_towers(
                     break;
                 }
 
-                fill_circle(tower_color, spots[j].position, 15);
+                fill_circle(
+                    tower_color,
+                    spots[j].position,
+                    15);
+
                 break;
             }
         }
     }
 }
 
-// Draw enemies with type-specific appearances and health bars
+// Draw active enemies with different appearances and health bars
 void draw_enemies(const dynamic_array<enemy> &enemies)
 {
     for (int i = 0; i < length(enemies); i++)
@@ -118,6 +126,7 @@ void draw_enemies(const dynamic_array<enemy> &enemies)
         color enemy_color = get_enemy_color(current_enemy.type);
         double radius = get_enemy_radius(current_enemy.type);
 
+        // Draw the enemy using its type-specific colour and size
         fill_circle(
             enemy_color,
             current_enemy.position,
@@ -133,6 +142,7 @@ void draw_enemies(const dynamic_array<enemy> &enemies)
                 current_enemy.max_health;
         }
 
+        // Keep the health ratio between zero and one
         if (health_ratio < 0.0)
         {
             health_ratio = 0.0;
@@ -143,6 +153,7 @@ void draw_enemies(const dynamic_array<enemy> &enemies)
             health_ratio = 1.0;
         }
 
+        // Use a wider health bar for boss enemies
         double bar_width = 34;
 
         if (current_enemy.type == BOSS)
@@ -154,7 +165,7 @@ void draw_enemies(const dynamic_array<enemy> &enemies)
         double bar_x = current_enemy.position.x - bar_width / 2;
         double bar_y = current_enemy.position.y - radius - 12;
 
-        // Draw the health bar background and remaining health
+        // Draw the health bar background
         fill_rectangle(
             COLOR_BLACK,
             bar_x,
@@ -162,6 +173,7 @@ void draw_enemies(const dynamic_array<enemy> &enemies)
             bar_width,
             bar_height);
 
+        // Draw the remaining health
         fill_rectangle(
             COLOR_GREEN,
             bar_x,
@@ -171,8 +183,63 @@ void draw_enemies(const dynamic_array<enemy> &enemies)
     }
 }
 
+// Display one active status letter inside each enemy circle
+static void draw_enemy_status_indicators(
+    const dynamic_array<enemy> &enemies,
+    double current_time)
+{
+    for (int i = 0; i < length(enemies); i++)
+    {
+        const enemy &current_enemy = enemies[i];
+
+        if (!current_enemy.active)
+        {
+            continue;
+        }
+
+        string status_text = "";
+
+        // Prioritise movement restrictions over elemental effects
+        if (current_time < current_enemy.effects.stun_end_time)
+        {
+            status_text = "S";
+        }
+        else if (current_time < current_enemy.effects.immobilize_end_time)
+        {
+            status_text = "I";
+        }
+        else if (current_time < current_enemy.effects.end_times[BURNING])
+        {
+            status_text = "B";
+        }
+        else if (current_time < current_enemy.effects.end_times[WET])
+        {
+            status_text = "W";
+        }
+        else if (current_time < current_enemy.effects.end_times[CHARGED])
+        {
+            status_text = "C";
+        }
+        else if (current_time < current_enemy.effects.end_times[CRACKED])
+        {
+            status_text = "K";
+        }
+
+        // Draw the status letter at the centre of the enemy
+        if (status_text != "")
+        {
+            draw_text(
+                status_text,
+                COLOR_WHITE,
+                current_enemy.position.x - 4,
+                current_enemy.position.y - 8);
+        }
+    }
+}
+
 // Draw all active projectiles
-void draw_projectiles(const dynamic_array<projectile> &projectiles)
+void draw_projectiles(
+    const dynamic_array<projectile> &projectiles)
 {
     for (int i = 0; i < length(projectiles); i++)
     {
@@ -198,7 +265,7 @@ static void select_tower(game_data &game, tower_type type)
     }
 }
 
-// Change the selected tower's targeting mode
+// Change the selected tower's targeting strategy
 static void select_targeting_mode(
     game_data &game,
     targeting_mode mode)
@@ -229,21 +296,25 @@ static void select_sell(game_data &game)
     }
 }
 
-// Draw a purchase button using the tower cost from configuration
+// Draw a purchase option using the tower cost from configuration
 static void draw_purchase_option(
     game_data &game,
     tower_type type,
     const string &name,
     rectangle button_area)
 {
-    const tower_stats *stats = find_tower_stats(game.config, type);
+    const tower_stats *stats = find_tower_stats(
+        game.config,
+        type);
 
     if (stats == nullptr)
     {
         return;
     }
 
-    if (button(name + " - " + to_string(stats->cost), button_area))
+    if (button(
+            name + " - " + to_string(stats->cost),
+            button_area))
     {
         select_tower(game, type);
     }
@@ -268,6 +339,7 @@ void draw_purchase_menu(game_data &game)
 
     double menu_x = spot_position.x + gap;
 
+    // Move the menu to the left if it exceeds the window boundary
     if (menu_x + menu_width > 1000)
     {
         menu_x = spot_position.x - gap - menu_width;
@@ -275,6 +347,7 @@ void draw_purchase_menu(game_data &game)
 
     double menu_y = spot_position.y - menu_height / 2;
 
+    // Keep the menu inside the window vertically
     if (menu_y < 0)
     {
         menu_y = 0;
@@ -285,7 +358,7 @@ void draw_purchase_menu(game_data &game)
         menu_y = 700 - menu_height;
     }
 
-    // Draw menu background
+    // Draw the purchase menu background and border
     fill_rectangle(
         COLOR_WHITE,
         menu_x,
@@ -308,35 +381,64 @@ void draw_purchase_menu(game_data &game)
 
     double button_width = menu_width - 30;
     double button_height = 30;
-    double button_x = menu_x + (menu_width - button_width) / 2 - 5;
+    double button_x = menu_x + (menu_width - button_width) / 2;
 
-    // Draw elemental tower purchase options
+    // Draw the four elemental tower purchase options
     draw_purchase_option(
-        game, FIRE, "FIRE",
-        rectangle_from(button_x, menu_y + 30, button_width, button_height));
-
-    draw_purchase_option(
-        game, WATER, "WATER",
-        rectangle_from(button_x, menu_y + 70, button_width, button_height));
-
-    draw_purchase_option(
-        game, ELECTRIC, "ELECTRIC",
-        rectangle_from(button_x, menu_y + 110, button_width, button_height));
+        game,
+        FIRE,
+        "FIRE",
+        rectangle_from(
+            button_x,
+            menu_y + 30,
+            button_width,
+            button_height));
 
     draw_purchase_option(
-        game, EARTH, "EARTH",
-        rectangle_from(button_x, menu_y + 150, button_width, button_height));
+        game,
+        WATER,
+        "WATER",
+        rectangle_from(
+            button_x,
+            menu_y + 70,
+            button_width,
+            button_height));
 
+    draw_purchase_option(
+        game,
+        ELECTRIC,
+        "ELECTRIC",
+        rectangle_from(
+            button_x,
+            menu_y + 110,
+            button_width,
+            button_height));
+
+    draw_purchase_option(
+        game,
+        EARTH,
+        "EARTH",
+        rectangle_from(
+            button_x,
+            menu_y + 150,
+            button_width,
+            button_height));
+
+    // Allow the player to close the purchase menu
     if (button(
             "CANCEL",
-            rectangle_from(button_x, menu_y + 190, button_width, button_height)))
+            rectangle_from(
+                button_x,
+                menu_y + 190,
+                button_width,
+                button_height)))
     {
         game.purchase_menu_open = false;
         game.selected_spot_index = -1;
     }
 }
 
-// Display targeting, upgrade and selling controls for a selected tower
+// Display targeting, upgrading and selling options for a selected tower
 void draw_management_menu(game_data &game)
 {
     if (
@@ -353,13 +455,18 @@ void draw_management_menu(game_data &game)
     int sell_refund = 0;
     int tower_level = 0;
 
-    // Find the selected tower and retrieve its current information
+    // Find the selected tower and retrieve its information
     for (int i = 0; i < length(game.towers); i++)
     {
         if (game.towers[i].id == selected_tower_id)
         {
-            upgrade_cost = get_upgrade_cost(game, game.towers[i]);
-            sell_refund = get_sell_refund(game.towers[i]);
+            upgrade_cost = get_upgrade_cost(
+                game,
+                game.towers[i]);
+
+            sell_refund = get_sell_refund(
+                game.towers[i]);
+
             tower_level = game.towers[i].level;
             break;
         }
@@ -379,6 +486,7 @@ void draw_management_menu(game_data &game)
 
     double menu_x = spot_position.x + gap;
 
+    // Move the menu left if it would exceed the window boundary
     if (menu_x + menu_width > 1000)
     {
         menu_x = spot_position.x - gap - menu_width;
@@ -386,6 +494,7 @@ void draw_management_menu(game_data &game)
 
     double menu_y = spot_position.y - menu_height / 2;
 
+    // Keep the menu inside the window vertically
     if (menu_y < 0)
     {
         menu_y = 0;
@@ -396,7 +505,7 @@ void draw_management_menu(game_data &game)
         menu_y = 700 - menu_height;
     }
 
-    // Draw menu background
+    // Draw the management menu background and border
     fill_rectangle(
         COLOR_WHITE,
         menu_x,
@@ -419,33 +528,49 @@ void draw_management_menu(game_data &game)
 
     double button_width = menu_width - 30;
     double button_height = 30;
-    double button_x = menu_x + (menu_width - button_width) / 2 - 5;
+    double button_x = menu_x + (menu_width - button_width) / 2;
 
-    // Draw targeting mode buttons
+    // Change the tower's targeting strategy
     if (button(
             "FIRST",
-            rectangle_from(button_x, menu_y + 30, button_width, button_height)))
+            rectangle_from(
+                button_x,
+                menu_y + 30,
+                button_width,
+                button_height)))
     {
         select_targeting_mode(game, FIRST);
     }
 
     if (button(
             "CLOSEST",
-            rectangle_from(button_x, menu_y + 70, button_width, button_height)))
+            rectangle_from(
+                button_x,
+                menu_y + 70,
+                button_width,
+                button_height)))
     {
         select_targeting_mode(game, CLOSEST);
     }
 
     if (button(
             "STRONGEST",
-            rectangle_from(button_x, menu_y + 110, button_width, button_height)))
+            rectangle_from(
+                button_x,
+                menu_y + 110,
+                button_width,
+                button_height)))
     {
         select_targeting_mode(game, STRONGEST);
     }
 
     if (button(
             "WEAKEST",
-            rectangle_from(button_x, menu_y + 150, button_width, button_height)))
+            rectangle_from(
+                button_x,
+                menu_y + 150,
+                button_width,
+                button_height)))
     {
         select_targeting_mode(game, WEAKEST);
     }
@@ -460,7 +585,11 @@ void draw_management_menu(game_data &game)
 
     if (button(
             upgrade_text,
-            rectangle_from(button_x, menu_y + 190, button_width, button_height)))
+            rectangle_from(
+                button_x,
+                menu_y + 190,
+                button_width,
+                button_height)))
     {
         if (upgrade_cost > 0)
         {
@@ -468,19 +597,28 @@ void draw_management_menu(game_data &game)
         }
     }
 
-    // Draw the sell button with its calculated refund
+    // Display the selling refund for the selected tower
     string sell_text = "SELL - " + to_string(sell_refund);
 
     if (button(
             sell_text,
-            rectangle_from(button_x, menu_y + 230, button_width, button_height)))
+            rectangle_from(
+                button_x,
+                menu_y + 230,
+                button_width,
+                button_height)))
     {
         select_sell(game);
     }
 
+    // Allow the player to close the management menu
     if (button(
             "CANCEL",
-            rectangle_from(button_x, menu_y + 270, button_width, button_height)))
+            rectangle_from(
+                button_x,
+                menu_y + 270,
+                button_width,
+                button_height)))
     {
         game.management_menu_open = false;
         game.selected_spot_index = -1;
@@ -501,10 +639,10 @@ static string get_preview_text(
     return name + " x" + to_string(counts[type]) + "   ";
 }
 
-// Display the upcoming enemy composition and allow the player to start early
+// Show upcoming enemies and allow the player to start the wave early
 static void draw_preparation_panel(game_data &game)
 {
-    // Use the configured enemy count so the preview matches the actual wave
+    // Get the enemy count from wave.json configuration
     int enemies_per_wave = get_enemies_per_wave(game);
 
     fixed_array<int, 5> counts{0};
@@ -551,7 +689,7 @@ static void draw_preparation_panel(game_data &game)
         panel_width,
         panel_height);
 
-    // Display the upcoming wave number and countdown
+    // Display the upcoming wave and countdown
     draw_text(
         "PREPARE WAVE " + to_string(game.wave) +
             " - " + to_string(countdown) + "s",
@@ -559,7 +697,7 @@ static void draw_preparation_panel(game_data &game)
         panel_x + 10,
         panel_y + 7);
 
-    // Prepare the enemy preview using the wave generation logic
+    // Build the preview using the same rules as enemy spawning
     string first_row =
         get_preview_text(counts, NORMAL, "NORMAL") +
         get_preview_text(counts, FAST, "FAST") +
@@ -569,7 +707,7 @@ static void draw_preparation_panel(game_data &game)
         get_preview_text(counts, SWARM, "SWARM") +
         get_preview_text(counts, BOSS, "BOSS");
 
-    // Display the enemy preview on the left side
+    // Draw the upcoming enemy types
     draw_text(
         first_row,
         COLOR_BLACK,
@@ -582,14 +720,14 @@ static void draw_preparation_panel(game_data &game)
         panel_x + 10,
         panel_y + 53);
 
-    // Position the START EARLY button in the centre-right of the panel
+    // Centre the START EARLY button vertically on the right
     double button_width = 145;
     double button_height = 32;
 
     double button_x = panel_x + 280;
-    double button_y = panel_y + (panel_height - button_height) / 2;
+    double button_y =
+        panel_y + (panel_height - button_height) / 2;
 
-    // Allow the player to skip the remaining preparation countdown
     if (button(
             "START EARLY",
             rectangle_from(
@@ -602,32 +740,61 @@ static void draw_preparation_panel(game_data &game)
     }
 }
 
-// Draw the game world, preparation panel, menus and game-over message
+// Draw the complete game world, interface and menus
 void draw_game(game_data &game)
 {
     clear_screen(COLOR_WHITE);
 
-    // Draw game information
-    draw_text("Tower Defence", COLOR_BLACK, 20, 20);
-    draw_text("Coins: " + to_string(game.coins), COLOR_BLACK, 20, 40);
-    draw_text("Lives: " + to_string(game.lives), COLOR_BLACK, 170, 40);
-    draw_text("Wave: " + to_string(game.wave), COLOR_BLACK, 320, 40);
+    // Draw the game information
+    draw_text(
+        "Tower Defence",
+        COLOR_BLACK,
+        20,
+        20);
 
-    // Draw enemy path
+    draw_text(
+        "Coins: " + to_string(game.coins),
+        COLOR_BLACK,
+        20,
+        40);
+
+    draw_text(
+        "Lives: " + to_string(game.lives),
+        COLOR_BLACK,
+        170,
+        40);
+
+    draw_text(
+        "Wave: " + to_string(game.wave),
+        COLOR_BLACK,
+        320,
+        40);
+
+    // Draw the enemy movement path
     for (int i = 0; i < length(game.path) - 1; i++)
     {
-        draw_line(COLOR_GRAY, game.path[i], game.path[i + 1]);
+        draw_line(
+            COLOR_GRAY,
+            game.path[i],
+            game.path[i + 1]);
     }
 
-    // Draw available tower spots and placed towers
+    // Draw the available tower spots and purchased towers
     draw_tower_spots(game.tower_spots);
     draw_towers(game.towers, game.tower_spots);
 
-    // Draw enemies and projectiles
+    // Draw enemies and their health bars
     draw_enemies(game.enemies);
+
+    // Draw one status letter inside each affected enemy
+    draw_enemy_status_indicators(
+        game.enemies,
+        game.current_time);
+
+    // Draw all active projectiles
     draw_projectiles(game.projectiles);
 
-    // Show the preparation panel when tower menus are closed
+    // Display wave preparation information when menus are closed
     if (
         game.lives > 0 &&
         game.phase == PREPARATION &&
@@ -637,20 +804,25 @@ void draw_game(game_data &game)
         draw_preparation_panel(game);
     }
 
-    // Draw tower menus
+    // Draw the tower purchase menu
     if (game.purchase_menu_open)
     {
         draw_purchase_menu(game);
     }
 
+    // Draw the tower management menu
     if (game.management_menu_open)
     {
         draw_management_menu(game);
     }
 
-    // Display game over message
+    // Display the game-over message
     if (game.lives <= 0)
     {
-        draw_text("GAME OVER", COLOR_RED, 450, 350);
+        draw_text(
+            "GAME OVER",
+            COLOR_RED,
+            450,
+            350);
     }
 }
