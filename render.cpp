@@ -287,6 +287,45 @@ void draw_projectiles(
     }
 }
 
+// Show the attack range when the mouse is over a purchased tower
+static void draw_hovered_tower_range(const game_data &game)
+{
+    // Do not display the range while a menu is open
+    if (game.purchase_menu_open || game.management_menu_open)
+    {
+        return;
+    }
+
+    point_2d mouse = mouse_position();
+
+    // Check each purchased tower
+    for (int i = 0; i < length(game.towers); i++)
+    {
+        // Find the placement spot belonging to the tower
+        for (int j = 0; j < length(game.tower_spots); j++)
+        {
+            if (game.towers[i].spot_id != game.tower_spots[j].id)
+            {
+                continue;
+            }
+
+            point_2d position = game.tower_spots[j].position;
+
+            // Check whether the mouse is over this tower
+            if (point_point_distance(mouse, position) <= TOWER_SPOT_RADIUS)
+            {
+                // Draw a visible green circle showing its range
+                color range_color = rgb_color(0, 130, 50);
+
+                draw_circle(range_color, position, game.towers[i].range);
+                draw_circle(range_color, position, game.towers[i].range - 1);
+
+                return;
+            }
+        }
+    }
+}
+
 // Purchase a selected tower and close the menu on success
 static void select_tower(game_data &game, tower_type type)
 {
@@ -494,11 +533,11 @@ void draw_purchase_menu(game_data &game)
     }
 }
 
-// Display targeting, upgrading and selling options for a selected tower
+// Display the management menu for the selected tower
 void draw_management_menu(game_data &game)
 {
-    if (
-        game.selected_spot_index < 0 ||
+    // Check whether the selected spot is valid
+    if (game.selected_spot_index < 0 ||
         game.selected_spot_index >= length(game.tower_spots))
     {
         return;
@@ -510,24 +549,22 @@ void draw_management_menu(game_data &game)
     int upgrade_cost = 0;
     int sell_refund = 0;
     int tower_level = 0;
+    int tower_damage = 0;
 
     // Find the selected tower and retrieve its information
     for (int i = 0; i < length(game.towers); i++)
     {
         if (game.towers[i].id == selected_tower_id)
         {
-            upgrade_cost = get_upgrade_cost(
-                game,
-                game.towers[i]);
-
-            sell_refund = get_sell_refund(
-                game.towers[i]);
-
+            upgrade_cost = get_upgrade_cost(game, game.towers[i]);
+            sell_refund = get_sell_refund(game.towers[i]);
             tower_level = game.towers[i].level;
+            tower_damage = game.towers[i].damage;
             break;
         }
     }
 
+    // Stop if the tower cannot be found
     if (tower_level == 0)
     {
         return;
@@ -536,22 +573,25 @@ void draw_management_menu(game_data &game)
     point_2d spot_position =
         game.tower_spots[game.selected_spot_index].position;
 
-    // Reuse the same menu positioning and background drawing functions
+    // Calculate the menu position
     point_2d menu_position = get_menu_position(
         spot_position,
         MANAGEMENT_MENU_HEIGHT);
 
+    // Draw the menu background
     draw_menu_background(
         menu_position,
         MANAGEMENT_MENU_HEIGHT);
 
+    // Display the tower's level and damage
     draw_text(
-        "Tower - Lv " + to_string(tower_level),
+        "Lv " + to_string(tower_level) +
+            " | DMG: " + to_string(tower_damage),
         COLOR_BLACK,
         menu_position.x + 15,
         menu_position.y + 15);
 
-    // Draw the four targeting options using one helper function
+    // Draw the four targeting options
     draw_targeting_button(
         game,
         FIRST,
@@ -576,7 +616,7 @@ void draw_management_menu(game_data &game)
         "WEAKEST",
         get_menu_button_area(menu_position, 3));
 
-    // Display the next upgrade cost or maximum level
+    // Display the upgrade cost or maximum level
     string upgrade_text = "MAX LEVEL";
 
     if (upgrade_cost > 0)
@@ -584,6 +624,7 @@ void draw_management_menu(game_data &game)
         upgrade_text = "UPGRADE - " + to_string(upgrade_cost);
     }
 
+    // Upgrade the selected tower
     if (button(
             upgrade_text,
             get_menu_button_area(menu_position, 4)))
@@ -594,9 +635,10 @@ void draw_management_menu(game_data &game)
         }
     }
 
-    // Display the selling refund for the selected tower
+    // Display the selling refund
     string sell_text = "SELL - " + to_string(sell_refund);
 
+    // Sell the selected tower
     if (button(
             sell_text,
             get_menu_button_area(menu_position, 5)))
@@ -604,7 +646,7 @@ void draw_management_menu(game_data &game)
         select_sell(game);
     }
 
-    // Allow the player to close the management menu
+    // Close the management menu
     if (button(
             "CANCEL",
             get_menu_button_area(menu_position, 6)))
@@ -764,6 +806,9 @@ void draw_game(game_data &game)
             game.path[i],
             game.path[i + 1]);
     }
+
+    // Show tower range when hovering over a purchased tower
+    draw_hovered_tower_range(game);
 
     // Draw the available tower spots and purchased towers
     draw_tower_spots(game.tower_spots);
