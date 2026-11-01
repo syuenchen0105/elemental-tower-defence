@@ -1,6 +1,20 @@
 #include "projectile.h"
 #include "effects.h"
 
+// Shared projectile movement and damage constants
+const double PROJECTILE_SPEED = 5.0;
+const int TANK_EARTH_DAMAGE_PERCENT = 70;
+const int BOSS_DAMAGE_PERCENT = 80;
+const int PERCENT_DIVISOR = 100;
+const int MINIMUM_DAMAGE = 1;
+
+// Elemental effect durations and burning tick timing
+const double BURNING_DURATION = 2.5;
+const double BURNING_TICK_INTERVAL = 0.5;
+const double WET_DURATION = 3.0;
+const double CHARGED_DURATION = 2.5;
+const double CRACKED_DURATION = 2.5;
+
 // Create a projectile that travels toward a target enemy
 void fire_projectile(
     dynamic_array<projectile> &projectiles,
@@ -8,8 +22,6 @@ void fire_projectile(
     const tower_spot &spot,
     int target_enemy_id)
 {
-    const double PROJECTILE_SPEED = 5.0;
-
     projectile new_projectile{};
 
     new_projectile.position = spot.position;
@@ -72,11 +84,6 @@ static int calculate_projectile_damage(
     const projectile &current_projectile,
     const enemy &current_enemy)
 {
-    const int TANK_EARTH_DAMAGE_PERCENT = 70;
-    const int BOSS_DAMAGE_PERCENT = 80;
-    const int PERCENT_DIVISOR = 100;
-    const int MINIMUM_DAMAGE = 1;
-
     int damage = current_projectile.damage;
 
     // TANK enemies take 70% damage from EARTH projectiles
@@ -109,13 +116,6 @@ static void apply_projectile_effect(
     enemy &current_enemy,
     double current_time)
 {
-    // Elemental effect durations and burning tick timing
-    const double BURNING_DURATION = 2.5;
-    const double BURNING_TICK_INTERVAL = 0.5;
-    const double WET_DURATION = 3.0;
-    const double CHARGED_DURATION = 2.5;
-    const double CRACKED_DURATION = 2.5;
-
     switch (current_projectile.type)
     {
     case FIRE:

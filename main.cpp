@@ -9,6 +9,16 @@
 #include "tower.h"
 #include "wave.h"
 
+// Window and display settings
+const int WINDOW_WIDTH = 1000;
+const int WINDOW_HEIGHT = 700;
+const int TARGET_FPS = 60;
+
+// Expected configuration entries for the existing game types
+const int EXPECTED_TOWER_TYPES = 4;
+const int EXPECTED_UPGRADES = 16;
+const int EXPECTED_ENEMY_TYPES = 5;
+
 // Initialise the game and run the main gameplay loop
 int main()
 {
@@ -18,6 +28,16 @@ int main()
     load_tower_stats(game.config.tower_definitions);
     load_tower_upgrades(game.config.tower_upgrades);
     load_enemy_stats(game.config.enemy_definitions);
+
+    // Do not start the game if essential JSON definitions are missing
+    if (
+        length(game.config.tower_definitions) != EXPECTED_TOWER_TYPES ||
+        length(game.config.tower_upgrades) != EXPECTED_UPGRADES ||
+        length(game.config.enemy_definitions) != EXPECTED_ENEMY_TYPES)
+    {
+        write_line("Unable to start the game: configuration is incomplete.");
+        return 1;
+    }
 
     // Load the configurable elemental reaction statistics
     if (!load_reaction_config(game.config.reactions))
@@ -44,7 +64,7 @@ int main()
     game.preparation_end_time =
         game.config.waves.preparation_seconds;
 
-    open_window("Tower Defence", 1000, 700);
+    open_window("Tower Defence", WINDOW_WIDTH, WINDOW_HEIGHT);
 
     // Create a timer for spawning and gameplay effects
     timer spawn_timer = create_timer("Spawn Timer");
@@ -138,7 +158,7 @@ int main()
         // Draw the map, towers, enemies and interface
         draw_game(game);
         draw_interface();
-        refresh_screen(60);
+        refresh_screen(TARGET_FPS);
 
     } while (!quit_requested());
 

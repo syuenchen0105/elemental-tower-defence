@@ -1,5 +1,9 @@
 #include "effects.h"
 
+// Shared constants for periodic burning damage
+const int BURNING_TICK_DAMAGE = 2;
+const double BURNING_TICK_INTERVAL = 0.5;
+
 // Read and validate the statistics for one elemental reaction
 static bool read_reaction_stats(
     json reactions_data,
@@ -235,9 +239,6 @@ static void update_burning(
     double current_time,
     int &coins)
 {
-    const int BURNING_TICK_DAMAGE = 2;
-    const double BURNING_TICK_INTERVAL = 0.5;
-
     if (current_enemy.effects.next_burn_tick_time <= 0.0)
     {
         return;
@@ -533,39 +534,17 @@ static void apply_area_damage(
     }
 }
 
-// Detect and execute a reaction using the JSON configuration
-void try_trigger_reaction(
+// Apply the damage or movement restriction of a detected reaction
+static void apply_reaction_result(
     dynamic_array<enemy> &enemies,
     int enemy_index,
+    reaction_type type,
     double current_time,
     int &coins,
     const reaction_config &settings)
 {
-    if (enemy_index < 0 || enemy_index >= length(enemies))
-    {
-        return;
-    }
-
     enemy &current_enemy = enemies[enemy_index];
-
-    // Determine whether an elemental pair is currently active
-    reaction_type type = find_reaction(
-        current_enemy,
-        current_time);
-
-    if (type == REACTION_COUNT)
-    {
-        return;
-    }
-
-    // Retrieve the reaction statistics loaded from JSON
     const reaction_stats &stats = settings.definitions[type];
-
-    // Remove the two elemental statuses consumed by the reaction
-    consume_reaction_effects(
-        current_enemy,
-        type,
-        current_time);
 
     // Apply damage or movement restrictions for the selected reaction
     switch (type)
@@ -630,6 +609,50 @@ void try_trigger_reaction(
     case REACTION_COUNT:
         break;
     }
+}
+
+// Detect and execute a reaction using the JSON configuration
+void try_trigger_reaction(
+    dynamic_array<enemy> &enemies,
+    int enemy_index,
+    double current_time,
+    int &coins,
+    const reaction_config &settings)
+{
+    if (enemy_index < 0 || enemy_index >= length(enemies))
+    {
+        return;
+    }
+
+    enemy &current_enemy = enemies[enemy_index];
+
+    // Determine whether an elemental pair is currently active
+    reaction_type type = find_reaction(
+        current_enemy,
+        current_time);
+
+    if (type == REACTION_COUNT)
+    {
+        return;
+    }
+
+    // Retrieve the reaction statistics loaded from JSON
+    const reaction_stats &stats = settings.definitions[type];
+
+    // Remove the two elemental statuses consumed by the reaction
+    consume_reaction_effects(
+        current_enemy,
+        type,
+        current_time);
+
+    // Apply the reaction using the separate helper
+    apply_reaction_result(
+        enemies,
+        enemy_index,
+        type,
+        current_time,
+        coins,
+        settings);
 
     // Apply the cooldown configured for this reaction
     start_reaction_cooldown(

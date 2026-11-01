@@ -2,14 +2,19 @@
 #include "config.h"
 #include "projectile.h"
 
+// Shared constants for tower operations
+const int STARTING_TOWER_LEVEL = 1;
+const int MAX_TOWER_LEVEL = 5;
+const int SELL_REFUND_PERCENT = 70;
+const int PERCENT_DIVISOR = 100;
+const double TOWER_SPOT_CLICK_RADIUS = 20.0;
+
 // Create a level 1 tower using its configuration statistics
 static tower create_tower(
     const tower_stats &stats,
     int id,
     int spot_id)
 {
-    const int STARTING_TOWER_LEVEL = 1;
-
     tower new_tower{};
 
     new_tower.id = id;
@@ -227,13 +232,27 @@ static int find_target(
     return game.enemies[selected_index].id;
 }
 
+// Find a tower in the dynamic array using its unique ID
+static int find_tower_index(
+    const dynamic_array<tower> &towers,
+    int tower_id)
+{
+    for (int i = 0; i < length(towers); i++)
+    {
+        if (towers[i].id == tower_id)
+        {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 // Retrieve the cost of the selected tower's next upgrade
 int get_upgrade_cost(
     const game_data &game,
     const tower &current_tower)
 {
-    const int MAX_TOWER_LEVEL = 5;
-
     // Prevent upgrades beyond the maximum level
     if (current_tower.level >= MAX_TOWER_LEVEL)
     {
@@ -256,8 +275,6 @@ int get_upgrade_cost(
 // Upgrade the selected tower if an upgrade exists and coins are sufficient
 bool upgrade_tower(game_data &game)
 {
-    const int MAX_TOWER_LEVEL = 5;
-
     // Check whether a valid tower spot is selected
     if (
         game.selected_spot_index < 0 ||
@@ -269,65 +286,59 @@ bool upgrade_tower(game_data &game)
     int selected_tower_id =
         game.tower_spots[game.selected_spot_index].tower_id;
 
-    // Find the selected tower using its unique ID
-    for (int i = 0; i < length(game.towers); i++)
+    // Use the shared helper to find the selected tower
+    int tower_index = find_tower_index(
+        game.towers,
+        selected_tower_id);
+
+    if (tower_index == -1)
     {
-        tower &current_tower = game.towers[i];
-
-        if (current_tower.id != selected_tower_id)
-        {
-            continue;
-        }
-
-        // Prevent upgrading beyond the maximum level
-        if (current_tower.level >= MAX_TOWER_LEVEL)
-        {
-            return false;
-        }
-
-        // Find the next upgrade in the JSON configuration
-        const tower_upgrade *upgrade = find_tower_upgrade(
-            game.config,
-            current_tower.type,
-            current_tower.level + 1);
-
-        if (upgrade == nullptr)
-        {
-            return false;
-        }
-
-        // Check whether the player has enough coins
-        if (game.coins < upgrade->cost)
-        {
-            return false;
-        }
-
-        // Deduct coins and track the amount spent for selling
-        game.coins -= upgrade->cost;
-        current_tower.total_spent += upgrade->cost;
-
-        // Apply the upgrade's damage, range and attack speed changes
-        current_tower.damage += upgrade->damage_increase;
-        current_tower.range += upgrade->range_increase;
-
-        current_tower.attack_delay -=
-            upgrade->attack_delay_reduction;
-
-        // Increase the tower level
-        current_tower.level++;
-
-        return true;
+        return false;
     }
 
-    return false;
+    tower &current_tower = game.towers[tower_index];
+
+    // Prevent upgrading beyond the maximum level
+    if (current_tower.level >= MAX_TOWER_LEVEL)
+    {
+        return false;
+    }
+
+    // Find the next upgrade in the JSON configuration
+    const tower_upgrade *upgrade = find_tower_upgrade(
+        game.config,
+        current_tower.type,
+        current_tower.level + 1);
+
+    if (upgrade == nullptr)
+    {
+        return false;
+    }
+
+    // Check whether the player has enough coins
+    if (game.coins < upgrade->cost)
+    {
+        return false;
+    }
+
+    // Deduct coins and track the amount spent for selling
+    game.coins -= upgrade->cost;
+    current_tower.total_spent += upgrade->cost;
+
+    // Apply the upgrade's damage, range and attack speed changes
+    current_tower.damage += upgrade->damage_increase;
+    current_tower.range += upgrade->range_increase;
+    current_tower.attack_delay -= upgrade->attack_delay_reduction;
+
+    // Increase the tower level
+    current_tower.level++;
+
+    return true;
 }
 
 // Calculate the selling refund from the total amount spent
 int get_sell_refund(const tower &current_tower)
 {
-    const int SELL_REFUND_PERCENT = 70;
-    const int PERCENT_DIVISOR = 100;
-
     // Integer division rounds the refund down
     return current_tower.total_spent *
            SELL_REFUND_PERCENT /
@@ -353,27 +364,24 @@ bool sell_tower(game_data &game)
         return false;
     }
 
-    // Find the tower associated with the selected spot
-    for (int i = 0; i < length(game.towers); i++)
+    // Find the selected tower with the shared helper
+    int tower_index = find_tower_index(game.towers, spot.tower_id);
+
+    if (tower_index == -1)
     {
-        if (game.towers[i].id == spot.tower_id)
-        {
-            // Refund a percentage of the total coins invested
-            int refund = get_sell_refund(game.towers[i]);
-            game.coins += refund;
-
-            // Remove the tower from the dynamic array
-            remove(game.towers, i);
-
-            // Reset the spot for a future purchase
-            spot.occupied = false;
-            spot.tower_id = -1;
-
-            return true;
-        }
+        return false;
     }
 
-    return false;
+    // Refund a percentage of the total coins invested
+    int refund = get_sell_refund(game.towers[tower_index]);
+    game.coins += refund;
+
+    // Remove the tower and make its spot available again
+    remove(game.towers, tower_index);
+    spot.occupied = false;
+    spot.tower_id = -1;
+
+    return true;
 }
 
 // Change the targeting strategy of the currently selected tower
@@ -392,22 +400,20 @@ void change_tower_targeting(
     int selected_tower_id =
         game.tower_spots[game.selected_spot_index].tower_id;
 
-    // Find the selected tower and update its targeting mode
-    for (int i = 0; i < length(game.towers); i++)
+    // Use the shared helper to locate the tower
+    int tower_index = find_tower_index(
+        game.towers,
+        selected_tower_id);
+
+    if (tower_index != -1)
     {
-        if (game.towers[i].id == selected_tower_id)
-        {
-            game.towers[i].targeting = mode;
-            return;
-        }
+        game.towers[tower_index].targeting = mode;
     }
 }
 
 // Handle mouse clicks on tower spots to open purchase or management menus
 void handle_tower_click(game_data &game)
 {
-    const double TOWER_SPOT_CLICK_RADIUS = 20.0;
-
     // Prevent selecting another spot while a menu is open
     if (game.purchase_menu_open || game.management_menu_open)
     {

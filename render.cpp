@@ -4,6 +4,40 @@
 #include "tower.h"
 #include "wave.h"
 
+// Shared drawing and layout constants
+const double WINDOW_WIDTH = 1000;
+const double WINDOW_HEIGHT = 700;
+const double TOWER_SPOT_RADIUS = 20;
+const double TOWER_RADIUS = 15;
+const double PROJECTILE_RADIUS = 5;
+
+const double NORMAL_ENEMY_RADIUS = 12;
+const double FAST_ENEMY_RADIUS = 9;
+const double TANK_ENEMY_RADIUS = 16;
+const double SWARM_ENEMY_RADIUS = 8;
+const double BOSS_ENEMY_RADIUS = 23;
+const double HEALTH_BAR_WIDTH = 34;
+const double BOSS_HEALTH_BAR_WIDTH = 50;
+const double HEALTH_BAR_HEIGHT = 5;
+const double HEALTH_BAR_GAP = 12;
+
+const double MENU_WIDTH = 180;
+const double MENU_GAP = 30;
+const double MENU_SIDE_PADDING = 15;
+const double MENU_BUTTON_HEIGHT = 30;
+const double MENU_FIRST_BUTTON_OFFSET = 30;
+const double MENU_BUTTON_SPACING = 40;
+const double PURCHASE_MENU_HEIGHT = 240;
+const double MANAGEMENT_MENU_HEIGHT = 320;
+
+const double PREPARATION_PANEL_X = 550;
+const double PREPARATION_PANEL_Y = 10;
+const double PREPARATION_PANEL_WIDTH = 440;
+const double PREPARATION_PANEL_HEIGHT = 85;
+const double START_BUTTON_WIDTH = 145;
+const double START_BUTTON_HEIGHT = 32;
+const double START_BUTTON_X_OFFSET = 280;
+
 // Return the display colour for each enemy type
 static color get_enemy_color(enemy_type type)
 {
@@ -34,22 +68,22 @@ static double get_enemy_radius(enemy_type type)
     switch (type)
     {
     case NORMAL:
-        return 12;
+        return NORMAL_ENEMY_RADIUS;
 
     case FAST:
-        return 9;
+        return FAST_ENEMY_RADIUS;
 
     case TANK:
-        return 16;
+        return TANK_ENEMY_RADIUS;
 
     case SWARM:
-        return 8;
+        return SWARM_ENEMY_RADIUS;
 
     case BOSS:
-        return 23;
+        return BOSS_ENEMY_RADIUS;
     }
 
-    return 12;
+    return NORMAL_ENEMY_RADIUS;
 }
 
 // Draw all available tower placement spots
@@ -62,7 +96,7 @@ void draw_tower_spots(const dynamic_array<tower_spot> &spots)
             fill_circle(
                 COLOR_BLUE,
                 spots[i].position,
-                20);
+                TOWER_SPOT_RADIUS);
         }
     }
 }
@@ -103,7 +137,7 @@ void draw_towers(
                 fill_circle(
                     tower_color,
                     spots[j].position,
-                    15);
+                    TOWER_RADIUS);
 
                 break;
             }
@@ -153,16 +187,15 @@ void draw_enemies(const dynamic_array<enemy> &enemies)
         }
 
         // Use a wider health bar for boss enemies
-        double bar_width = 34;
+        double bar_width = HEALTH_BAR_WIDTH;
 
         if (current_enemy.type == BOSS)
         {
-            bar_width = 50;
+            bar_width = BOSS_HEALTH_BAR_WIDTH;
         }
 
-        double bar_height = 5;
         double bar_x = current_enemy.position.x - bar_width / 2;
-        double bar_y = current_enemy.position.y - radius - 12;
+        double bar_y = current_enemy.position.y - radius - HEALTH_BAR_GAP;
 
         // Draw the health bar background
         fill_rectangle(
@@ -170,7 +203,7 @@ void draw_enemies(const dynamic_array<enemy> &enemies)
             bar_x,
             bar_y,
             bar_width,
-            bar_height);
+            HEALTH_BAR_HEIGHT);
 
         // Draw the remaining health
         fill_rectangle(
@@ -178,7 +211,7 @@ void draw_enemies(const dynamic_array<enemy> &enemies)
             bar_x,
             bar_y,
             bar_width * health_ratio,
-            bar_height);
+            HEALTH_BAR_HEIGHT);
     }
 }
 
@@ -250,7 +283,7 @@ void draw_projectiles(
         fill_circle(
             COLOR_YELLOW,
             projectiles[i].position,
-            5);
+            PROJECTILE_RADIUS);
     }
 }
 
@@ -319,6 +352,85 @@ static void draw_purchase_option(
     }
 }
 
+// Calculate a menu position that stays inside the game window
+static point_2d get_menu_position(
+    point_2d spot_position,
+    double menu_height)
+{
+    point_2d position{};
+
+    // Place the menu beside the tower spot
+    position.x = spot_position.x + MENU_GAP;
+
+    // Move the menu to the left if it exceeds the window boundary
+    if (position.x + MENU_WIDTH > WINDOW_WIDTH)
+    {
+        position.x = spot_position.x - MENU_GAP - MENU_WIDTH;
+    }
+
+    // Centre the menu vertically beside the tower spot
+    position.y = spot_position.y - menu_height / 2;
+
+    // Keep the menu inside the window vertically
+    if (position.y < 0)
+    {
+        position.y = 0;
+    }
+
+    if (position.y + menu_height > WINDOW_HEIGHT)
+    {
+        position.y = WINDOW_HEIGHT - menu_height;
+    }
+
+    return position;
+}
+
+// Draw the white background and black border shared by both tower menus
+static void draw_menu_background(
+    point_2d position,
+    double menu_height)
+{
+    fill_rectangle(
+        COLOR_WHITE,
+        position.x,
+        position.y,
+        MENU_WIDTH,
+        menu_height);
+
+    draw_rectangle(
+        COLOR_BLACK,
+        position.x,
+        position.y,
+        MENU_WIDTH,
+        menu_height);
+}
+
+// Create a consistently spaced button area inside a menu
+static rectangle get_menu_button_area(
+    point_2d menu_position,
+    int button_index)
+{
+    return rectangle_from(
+        menu_position.x + MENU_SIDE_PADDING,
+        menu_position.y + MENU_FIRST_BUTTON_OFFSET +
+            button_index * MENU_BUTTON_SPACING,
+        MENU_WIDTH - MENU_SIDE_PADDING * 2,
+        MENU_BUTTON_HEIGHT);
+}
+
+// Draw a targeting button and apply the selected targeting mode
+static void draw_targeting_button(
+    game_data &game,
+    targeting_mode mode,
+    const string &label,
+    rectangle button_area)
+{
+    if (button(label, button_area))
+    {
+        select_targeting_mode(game, mode);
+    }
+}
+
 // Display the tower purchase menu next to the selected spot
 void draw_purchase_menu(game_data &game)
 {
@@ -332,105 +444,50 @@ void draw_purchase_menu(game_data &game)
     point_2d spot_position =
         game.tower_spots[game.selected_spot_index].position;
 
-    double menu_width = 180;
-    double menu_height = 240;
-    double gap = 30;
+    // Reuse the same menu positioning and background drawing functions
+    point_2d menu_position = get_menu_position(
+        spot_position,
+        PURCHASE_MENU_HEIGHT);
 
-    double menu_x = spot_position.x + gap;
-
-    // Move the menu to the left if it exceeds the window boundary
-    if (menu_x + menu_width > 1000)
-    {
-        menu_x = spot_position.x - gap - menu_width;
-    }
-
-    double menu_y = spot_position.y - menu_height / 2;
-
-    // Keep the menu inside the window vertically
-    if (menu_y < 0)
-    {
-        menu_y = 0;
-    }
-
-    if (menu_y + menu_height > 700)
-    {
-        menu_y = 700 - menu_height;
-    }
-
-    // Draw the purchase menu background and border
-    fill_rectangle(
-        COLOR_WHITE,
-        menu_x,
-        menu_y,
-        menu_width,
-        menu_height);
-
-    draw_rectangle(
-        COLOR_BLACK,
-        menu_x,
-        menu_y,
-        menu_width,
-        menu_height);
+    draw_menu_background(
+        menu_position,
+        PURCHASE_MENU_HEIGHT);
 
     draw_text(
         "Choose Tower",
         COLOR_BLACK,
-        menu_x + 15,
-        menu_y + 15);
-
-    double button_width = menu_width - 30;
-    double button_height = 30;
-    double button_x = menu_x + (menu_width - button_width) / 2;
+        menu_position.x + 15,
+        menu_position.y + 15);
 
     // Draw the four elemental tower purchase options
     draw_purchase_option(
         game,
         FIRE,
         "FIRE",
-        rectangle_from(
-            button_x,
-            menu_y + 30,
-            button_width,
-            button_height));
+        get_menu_button_area(menu_position, 0));
 
     draw_purchase_option(
         game,
         WATER,
         "WATER",
-        rectangle_from(
-            button_x,
-            menu_y + 70,
-            button_width,
-            button_height));
+        get_menu_button_area(menu_position, 1));
 
     draw_purchase_option(
         game,
         ELECTRIC,
         "ELECTRIC",
-        rectangle_from(
-            button_x,
-            menu_y + 110,
-            button_width,
-            button_height));
+        get_menu_button_area(menu_position, 2));
 
     draw_purchase_option(
         game,
         EARTH,
         "EARTH",
-        rectangle_from(
-            button_x,
-            menu_y + 150,
-            button_width,
-            button_height));
+        get_menu_button_area(menu_position, 3));
 
     // Allow the player to close the purchase menu
     if (button(
             "CANCEL",
-            rectangle_from(
-                button_x,
-                menu_y + 190,
-                button_width,
-                button_height)))
+            get_menu_button_area(menu_position, 4)))
     {
         game.purchase_menu_open = false;
         game.selected_spot_index = -1;
@@ -479,100 +536,45 @@ void draw_management_menu(game_data &game)
     point_2d spot_position =
         game.tower_spots[game.selected_spot_index].position;
 
-    double menu_width = 180;
-    double menu_height = 320;
-    double gap = 30;
+    // Reuse the same menu positioning and background drawing functions
+    point_2d menu_position = get_menu_position(
+        spot_position,
+        MANAGEMENT_MENU_HEIGHT);
 
-    double menu_x = spot_position.x + gap;
-
-    // Move the menu left if it would exceed the window boundary
-    if (menu_x + menu_width > 1000)
-    {
-        menu_x = spot_position.x - gap - menu_width;
-    }
-
-    double menu_y = spot_position.y - menu_height / 2;
-
-    // Keep the menu inside the window vertically
-    if (menu_y < 0)
-    {
-        menu_y = 0;
-    }
-
-    if (menu_y + menu_height > 700)
-    {
-        menu_y = 700 - menu_height;
-    }
-
-    // Draw the management menu background and border
-    fill_rectangle(
-        COLOR_WHITE,
-        menu_x,
-        menu_y,
-        menu_width,
-        menu_height);
-
-    draw_rectangle(
-        COLOR_BLACK,
-        menu_x,
-        menu_y,
-        menu_width,
-        menu_height);
+    draw_menu_background(
+        menu_position,
+        MANAGEMENT_MENU_HEIGHT);
 
     draw_text(
         "Tower - Lv " + to_string(tower_level),
         COLOR_BLACK,
-        menu_x + 15,
-        menu_y + 15);
+        menu_position.x + 15,
+        menu_position.y + 15);
 
-    double button_width = menu_width - 30;
-    double button_height = 30;
-    double button_x = menu_x + (menu_width - button_width) / 2;
+    // Draw the four targeting options using one helper function
+    draw_targeting_button(
+        game,
+        FIRST,
+        "FIRST",
+        get_menu_button_area(menu_position, 0));
 
-    // Change the tower's targeting strategy
-    if (button(
-            "FIRST",
-            rectangle_from(
-                button_x,
-                menu_y + 30,
-                button_width,
-                button_height)))
-    {
-        select_targeting_mode(game, FIRST);
-    }
+    draw_targeting_button(
+        game,
+        CLOSEST,
+        "CLOSEST",
+        get_menu_button_area(menu_position, 1));
 
-    if (button(
-            "CLOSEST",
-            rectangle_from(
-                button_x,
-                menu_y + 70,
-                button_width,
-                button_height)))
-    {
-        select_targeting_mode(game, CLOSEST);
-    }
+    draw_targeting_button(
+        game,
+        STRONGEST,
+        "STRONGEST",
+        get_menu_button_area(menu_position, 2));
 
-    if (button(
-            "STRONGEST",
-            rectangle_from(
-                button_x,
-                menu_y + 110,
-                button_width,
-                button_height)))
-    {
-        select_targeting_mode(game, STRONGEST);
-    }
-
-    if (button(
-            "WEAKEST",
-            rectangle_from(
-                button_x,
-                menu_y + 150,
-                button_width,
-                button_height)))
-    {
-        select_targeting_mode(game, WEAKEST);
-    }
+    draw_targeting_button(
+        game,
+        WEAKEST,
+        "WEAKEST",
+        get_menu_button_area(menu_position, 3));
 
     // Display the next upgrade cost or maximum level
     string upgrade_text = "MAX LEVEL";
@@ -584,11 +586,7 @@ void draw_management_menu(game_data &game)
 
     if (button(
             upgrade_text,
-            rectangle_from(
-                button_x,
-                menu_y + 190,
-                button_width,
-                button_height)))
+            get_menu_button_area(menu_position, 4)))
     {
         if (upgrade_cost > 0)
         {
@@ -601,11 +599,7 @@ void draw_management_menu(game_data &game)
 
     if (button(
             sell_text,
-            rectangle_from(
-                button_x,
-                menu_y + 230,
-                button_width,
-                button_height)))
+            get_menu_button_area(menu_position, 5)))
     {
         select_sell(game);
     }
@@ -613,11 +607,7 @@ void draw_management_menu(game_data &game)
     // Allow the player to close the management menu
     if (button(
             "CANCEL",
-            rectangle_from(
-                button_x,
-                menu_y + 270,
-                button_width,
-                button_height)))
+            get_menu_button_area(menu_position, 6)))
     {
         game.management_menu_open = false;
         game.selected_spot_index = -1;
@@ -673,33 +663,28 @@ static void draw_preparation_panel(game_data &game)
         countdown++;
     }
 
-    double panel_x = 550;
-    double panel_y = 10;
-    double panel_width = 440;
-    double panel_height = 85;
-
     // Draw the preparation panel background and border
     fill_rectangle(
         rgb_color(235, 245, 255),
-        panel_x,
-        panel_y,
-        panel_width,
-        panel_height);
+        PREPARATION_PANEL_X,
+        PREPARATION_PANEL_Y,
+        PREPARATION_PANEL_WIDTH,
+        PREPARATION_PANEL_HEIGHT);
 
     draw_rectangle(
         COLOR_BLUE,
-        panel_x,
-        panel_y,
-        panel_width,
-        panel_height);
+        PREPARATION_PANEL_X,
+        PREPARATION_PANEL_Y,
+        PREPARATION_PANEL_WIDTH,
+        PREPARATION_PANEL_HEIGHT);
 
     // Display the upcoming wave and countdown
     draw_text(
         "PREPARE WAVE " + to_string(game.wave) +
             " - " + to_string(countdown) + "s",
         COLOR_BLACK,
-        panel_x + 10,
-        panel_y + 7);
+        PREPARATION_PANEL_X + 10,
+        PREPARATION_PANEL_Y + 7);
 
     // Build the preview using the same rules as enemy spawning
     string first_row =
@@ -715,30 +700,27 @@ static void draw_preparation_panel(game_data &game)
     draw_text(
         first_row,
         COLOR_BLACK,
-        panel_x + 10,
-        panel_y + 29);
+        PREPARATION_PANEL_X + 10,
+        PREPARATION_PANEL_Y + 29);
 
     draw_text(
         second_row,
         COLOR_BLACK,
-        panel_x + 10,
-        panel_y + 53);
+        PREPARATION_PANEL_X + 10,
+        PREPARATION_PANEL_Y + 53);
 
     // Centre the START EARLY button vertically on the right
-    double button_width = 145;
-    double button_height = 32;
-
-    double button_x = panel_x + 280;
-    double button_y =
-        panel_y + (panel_height - button_height) / 2;
+    double button_x = PREPARATION_PANEL_X + START_BUTTON_X_OFFSET;
+    double button_y = PREPARATION_PANEL_Y +
+                      (PREPARATION_PANEL_HEIGHT - START_BUTTON_HEIGHT) / 2;
 
     if (button(
             "START EARLY",
             rectangle_from(
                 button_x,
                 button_y,
-                button_width,
-                button_height)))
+                START_BUTTON_WIDTH,
+                START_BUTTON_HEIGHT)))
     {
         game.phase = IN_WAVE;
     }

@@ -1,14 +1,17 @@
 #include "enemy.h"
 #include "config.h"
 
+// Shared enemy spawning and movement constants
+const int BOSS_WAVE_INTERVAL = 5;
+const double HEALTH_INCREASE_PER_WAVE = 0.12;
+const double WET_SPEED_MULTIPLIER = 0.75;
+
 // Determine which enemy type should spawn based on the wave and spawn index
 enemy_type get_wave_enemy_type(
     int wave,
     int spawn_index,
     int enemies_per_wave)
 {
-    const int BOSS_WAVE_INTERVAL = 5;
-
     // Spawn a boss as the final enemy of every fifth wave
     if (
         wave % BOSS_WAVE_INTERVAL == 0 &&
@@ -44,8 +47,6 @@ void spawn_enemy(
     game_data &game,
     enemy_type type)
 {
-    const double HEALTH_INCREASE_PER_WAVE = 0.12;
-
     // Find the statistics for the selected enemy type
     const enemy_stats *stats = find_enemy_stats(
         game.config,
@@ -92,8 +93,6 @@ static void move_enemy(
     const dynamic_array<point_2d> &path,
     double current_time)
 {
-    const double WET_SPEED_MULTIPLIER = 0.75;
-
     // Prevent movement while the enemy is stunned
     if (current_time < current_enemy.effects.stun_end_time)
     {

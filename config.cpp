@@ -1,5 +1,9 @@
 #include "config.h"
 
+// Valid tower upgrade levels
+const int FIRST_UPGRADE_LEVEL = 2;
+const int MAX_TOWER_LEVEL = 5;
+
 // Read and validate the base statistics for one tower type
 static bool read_tower_stats(
     json tower_data,
@@ -180,9 +184,6 @@ static bool read_tower_upgrade(
 void load_tower_upgrades(
     dynamic_array<tower_upgrade> &tower_upgrades)
 {
-    const int FIRST_UPGRADE_LEVEL = 2;
-    const int MAX_TOWER_LEVEL = 5;
-
     json upgrade_data = json_from_file("upgrades.json");
     tower_upgrade upgrade{};
 
